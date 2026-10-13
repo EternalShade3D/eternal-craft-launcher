@@ -220,17 +220,24 @@ pub const DISCORD_URL: &str = "https://discord.gg/artcraft";
 /// ArtCraft Launcher itself, described like a Craft App so it can update itself with the same
 /// machinery (asset names `artcraft-launcher-<ver>-…`, bundle id `ai.storyteller.artcraft-launcher`,
 /// `ArtCraft Launcher.app`). Not part of [`SUITE`].
-pub const LAUNCHER: CraftApp = app(
-    "artcraft-launcher",
-    "ArtCraft Launcher",
-    "Installs and updates the Craft App Suite",
-    AppGroup::New,
-    [[0x0b, 0x0b, 0x0c], [0x0b, 0x0b, 0x0c], [0xf2, 0xf1, 0xee]],
-    "storytold/craft-launcher",
-);
+pub const LAUNCHER: CraftApp = CraftApp {
+    // The fork's own asset stem, so a fork copy updates from the fork's releases. Both stems are
+    // accepted: an upstream copy still recognises upstream's names.
+    former_ids: &["eternal-craft-launcher"],
+    ..app(
+        "artcraft-launcher",
+        "ArtCraft Launcher",
+        "Installs and updates the Craft App Suite",
+        AppGroup::New,
+        [[0x0b, 0x0b, 0x0c], [0x0b, 0x0b, 0x0c], [0xf2, 0xf1, 0xee]],
+        "EternalShade3D/eternal-craft-launcher",
+    )
+};
 
-/// The launcher's own repo, checked so it can say when a newer launcher is out.
-pub const LAUNCHER_REPO: &str = "storytold/craft-launcher";
+/// The launcher's own repo, checked so it can say when a newer launcher is out. This fork's own
+/// releases, not upstream's: a fork copy should update to the fork's build, otherwise the official
+/// unsigned build would replace the fork's over its own differences.
+pub const LAUNCHER_REPO: &str = "EternalShade3D/eternal-craft-launcher";
 /// The launcher's own asset stem.
 pub const LAUNCHER_ID: &str = "artcraft-launcher";
 

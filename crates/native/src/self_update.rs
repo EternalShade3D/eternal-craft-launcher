@@ -165,7 +165,10 @@ pub fn update(
     phase: &mut dyn FnMut(JobPhase),
     last: &dyn Fn() -> Result<(), String>,
 ) -> Result<(), String> {
-    let (asset, _) = pick_asset(release, &[LAUNCHER.id], platform, &[install.kind()])
+    // Both stems: upstream's names and the fork's. `LAUNCHER.stems()` is the list, so a fork
+    // release named `eternal-craft-launcher-…` is picked by a fork build.
+    let stems = LAUNCHER.stems().collect::<Vec<_>>();
+    let (asset, _) = pick_asset(release, &stems, platform, &[install.kind()])
         .ok_or_else(|| format!("ArtCraft Launcher {} has no {} for {}", release.version_label(), install.kind().label(), platform.label()))?;
     let asset = asset.clone();
     let mut job = Job { http, paths, stop, phase };
@@ -399,6 +402,7 @@ mod tests {
             "artcraft-launcher-0.2.0-linux-x86_64.AppImage",
             "artcraft-launcher-0.2.0-linux-x86_64.deb",
             "artcraft-launcher-web-0.2.0.zip",
+            "eternal-craft-launcher-0.2.0-windows-x64-portable.zip",
         ];
         let release = Release {
             assets: names
@@ -408,11 +412,21 @@ mod tests {
             ..Release::default()
         };
         use artcraft_launcher_core::{Arch, Os};
-        let pick = |os, kind| pick_asset(&release, &[LAUNCHER.id], Platform { os, arch: Arch::X64 }, &[kind]).map(|(a, _)| a.name.clone());
+        let stems = LAUNCHER.stems().collect::<Vec<_>>();
+        let pick = |os, kind| pick_asset(&release, &stems, Platform { os, arch: Arch::X64 }, &[kind]).map(|(a, _)| a.name.clone());
         assert_eq!(pick(Os::MacOs, Install::MacApp(PathBuf::new()).kind()).as_deref(), Some(names[0]));
         assert_eq!(pick(Os::Windows, Install::Msi(PathBuf::new()).kind()).as_deref(), Some(names[1]));
         assert_eq!(pick(Os::Windows, Install::Portable(PathBuf::new()).kind()).as_deref(), Some(names[2]));
         assert_eq!(pick(Os::Linux, Install::AppImage(PathBuf::new()).kind()).as_deref(), Some(names[3]));
         assert_eq!(pick(Os::Linux, Install::Package(PackageKind::Deb, PathBuf::new()).kind()).as_deref(), Some(names[4]));
+        // A fork release named with the fork's stem is picked too.
+        let fork_only = Release {
+            assets: vec![artcraft_launcher_core::release::Asset { name: names[6].into(), size: 1, url: String::new(), sha256: None }],
+            ..Release::default()
+        };
+        assert_eq!(
+            pick_asset(&fork_only, &stems, Platform { os: Os::Windows, arch: Arch::X64 }, &[PackageKind::PortableZip]).map(|(a, _)| a.name.clone()).as_deref(),
+            Some(names[6])
+        );
     }
 }

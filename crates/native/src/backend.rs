@@ -987,7 +987,7 @@ pub fn launcher_download(release: &Release, platform: Platform) -> Option<String
         Os::Linux => &[artcraft_launcher_core::PackageKind::AppImage, artcraft_launcher_core::PackageKind::Deb],
         _ => platform.default_kinds(),
     };
-    pick_asset(release, &[LAUNCHER_ID], platform, kinds).map(|(a, _)| a.url.clone())
+    pick_asset(release, &LAUNCHER.stems().collect::<Vec<_>>(), platform, kinds).map(|(a, _)| a.url.clone())
 }
 
 #[cfg(test)]
