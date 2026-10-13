@@ -24,41 +24,7 @@ release zip over the app's own folder.
 Diff against upstream: 5 files, +209 / -2. Everything else is upstream: same UI, same release feed,
 same SHA-256 verification, same single-instance lock, same self-update.
 
-### Why
-
-Upstream could not install a portable zip on Windows at all — the match arm fell through to
-"isn't supported on this system", so a portable suite was never recognised and every app showed an
-Install button. Detection looks at the Windows Installer registry and `App Paths` first, which a
-hand-downloaded portable folder never writes.
-
-The fork adds the zip arm, and `installed.json` (which `detect()` already trusts before the
-registry) points at the portable exes. That is the whole trick: no registry entries, no admin
-rights, nothing outside the suite folder.
-
-### How it behaves
-
-- One folder per app, named the way the suite is kept on disk (uppercase app folder), holding the
-  version folder the zip unpacks to.
-- An update lands in the same app folder. The old version folder is removed **only when the
-  launcher unpacked it**; a folder you put there by hand is never touched.
-- Removal takes only the version folder inside the launcher's apps folder, and leaves the app
-  folder's own files (its card picture, an icon) alone.
-- Entries that would land outside the staging folder are refused (`enclosed_name`).
-
-### Build
-
-Upstream asks for Rust 1.90. In practice `egui` 0.36.2 needs **1.95** — 1.90 fails on this tree,
-1.95 builds.
-
-```sh
-cargo +1.95 build --release -p artcraft-launcher
-cargo +1.95 test -p artcraft-launcher-native
-```
-
-### Brand
-
-The ArtCraft name, logo and "A" mark are trademarks of the ArtCraft Team and are not part of the
-MIT/Apache-2.0 license; forks must remove them. They are not used on this page.
+See [FORK.md](FORK.md) for the full list with the exact code, the behaviour rules and the build note.
 
 ---
 
