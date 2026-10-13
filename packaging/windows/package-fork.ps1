@@ -51,6 +51,7 @@ $Dist = Join-Path $Root 'dist/release'
 $Folder = Join-Path $Root ('dist/staging/' + "$Pkg-$Version-windows-x64-portable")
 Remove-Item -Recurse -Force $Folder -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $Folder | Out-Null
+New-Item -ItemType Directory -Force $Dist | Out-Null
 Copy-Item (Join-Path $Root "target/release/$CargoPkg.exe") (Join-Path $Folder "$Pkg.exe")
 foreach ($f in @('portable.txt', 'README.md', 'FORK.md', 'ATTRIBUTION.md', 'LICENSE-APACHE', 'LICENSE-MIT', 'NOTICE')) {
   $src = Join-Path $Root "packaging/windows/$f"
