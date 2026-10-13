@@ -45,8 +45,10 @@ if (-not $SkipBuild) {
   if ($LASTEXITCODE -ne 0) { throw 'build failed' }
 }
 
+# Only the zip and its checksum go into dist/release; the folder the zip is made from stays in
+# dist/staging, so the release step never tries to upload a directory as an asset.
 $Dist = Join-Path $Root 'dist/release'
-$Folder = Join-Path $Dist "$Pkg-$Version-windows-x64-portable"
+$Folder = Join-Path $Root ('dist/staging/' + "$Pkg-$Version-windows-x64-portable")
 Remove-Item -Recurse -Force $Folder -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $Folder | Out-Null
 Copy-Item (Join-Path $Root "target/release/$CargoPkg.exe") (Join-Path $Folder "$Pkg.exe")
