@@ -610,3 +610,26 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod fork_tests {
+    use super::*;
+    use artcraft_launcher_core::PackageKind;
+
+    #[test]
+    fn a_record_pointing_at_a_portable_exe_counts_as_the_launcher_s_own() {
+        let app = CraftApp::by_id("cadcraft").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("cadcraft.exe");
+        std::fs::write(&exe, "exe").unwrap();
+        let mut manifest = Manifest::default();
+        manifest.apps.insert(
+            "cadcraft".into(),
+            crate::manifest::Record { version: "0.6.2".into(), kind: PackageKind::PortableZip, path: exe.clone(), installed_at: 1, files: vec![], needs_root: false },
+        );
+        let found = detect(app, &manifest, &Snapshot::default()).unwrap();
+        assert_eq!(found.source, InstallSource::Launcher);
+        assert_eq!(found.location, exe.display().to_string());
+        assert!(InstallSource::Launcher.launcher_can_update(), "a portable record can't be updated");
+    }
+}
