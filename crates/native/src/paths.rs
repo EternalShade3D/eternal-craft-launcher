@@ -62,7 +62,18 @@ impl Paths {
     }
 
     /// Where tarball installs (FreeBSD, Linux without AppImage) are unpacked: `<data>/apps/<app>`.
+    ///
+    /// Fork: in portable mode the suite lives in an `APPS` folder next to the launcher's own
+    /// folder, so the whole suite is one portable tree and updates land where the apps already are.
     pub fn apps(&self) -> PathBuf {
+        if let Some(root) = portable_root()
+            && let Some(suite) = root.parent()
+        {
+            let apps = suite.join("APPS");
+            if apps.is_dir() {
+                return apps;
+            }
+        }
         self.data.join("apps")
     }
 
