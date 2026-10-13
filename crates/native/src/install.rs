@@ -69,6 +69,9 @@ pub fn install(
         PackageKind::Dmg => macos::install_dmg(app, &file, existing, job.paths, &macos::Expect::release(release)).map(|_| None),
         #[cfg(windows)]
         PackageKind::Msi => windows::run_msi(&file, job.stop, &mut *job.phase).map(|_| None),
+        #[cfg(windows)]
+        PackageKind::PortableZip => windows::install_zip(app, &file, job.paths, previous)
+            .map(|path| Some(record(&version, kind, path, Vec::new(), false))),
         #[cfg(target_os = "linux")]
         PackageKind::Deb | PackageKind::Rpm | PackageKind::Flatpak => linux::install_package(kind, &file, job.stop, &mut *job.phase).map(|_| None),
         #[cfg(target_os = "linux")]
@@ -142,7 +145,7 @@ pub fn available_kinds() -> Vec<PackageKind> {
     #[cfg(target_os = "macos")]
     return vec![PackageKind::Dmg];
     #[cfg(windows)]
-    return vec![PackageKind::Msi];
+    return vec![PackageKind::PortableZip, PackageKind::Msi];
     #[cfg(target_os = "linux")]
     return linux::available_kinds();
     #[cfg(target_os = "freebsd")]
@@ -232,6 +235,9 @@ pub fn uninstall(
     match installed.source {
         #[cfg(windows)]
         InstallSource::Msi => windows::uninstall_msi(app, stop, phase),
+        // Fork: a portable folder the launcher unpacked into its own apps folder.
+        #[cfg(windows)]
+        InstallSource::Launcher if record.is_some_and(|r| r.kind == PackageKind::PortableZip) => windows::remove_zip(record.unwrap(), paths),
         #[cfg(target_os = "macos")]
         InstallSource::MacApp | InstallSource::Launcher => macos::move_to_trash(&path),
         #[cfg(target_os = "linux")]
@@ -1194,6 +1200,62 @@ pub mod windows {
         INSTALLER.alone(&cancelled(stop), &mut turn(phase, working), work).unwrap_or_else(|| Err(CANCELLED.into()))
     }
 
+    /// Fork: the portable zip is an install format here, so a release zip is unpacked into the
+    /// launcher's own apps folder and the record points at the exe inside it. One folder per app,
+    /// named the way the suite is kept on disk (uppercase app folder), holding the version folder
+    /// the zip unpacks to, so an app stays in one place and its name always shows the version it
+    /// is. The old version folder goes only when the launcher unpacked it, and the app folder's
+    /// own files are never touched.
+    pub fn install_zip(app: &CraftApp, file: &Path, paths: &Paths, existing: Option<&Record>) -> Result<PathBuf, String> {
+        let staged = paths.cache.join(format!("{}.new", app.id));
+        let _ = std::fs::remove_dir_all(&staged);
+        std::fs::create_dir_all(&staged).map_err(|e| format!("couldn't create {} ({e})", staged.display()))?;
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(file).map_err(|e| e.to_string())?)
+            .map_err(|e| format!("couldn't open the download ({e})"))?;
+        for i in 0..archive.len() {
+            let mut entry = archive.by_index(i).map_err(|e| format!("couldn't read the download ({e})"))?;
+            // `enclosed_name` refuses entries that would land outside the staging folder.
+            let Some(rel) = entry.enclosed_name() else {
+                return Err(format!("the download has an entry that would land outside its folder ({})", entry.name().unwrap_or_default()));
+            };
+            let dest = staged.join(rel);
+            if entry.is_dir() {
+                std::fs::create_dir_all(&dest).map_err(|e| format!("couldn't create {} ({e})", dest.display()))?;
+                continue;
+            }
+            if let Some(dir) = dest.parent() {
+                std::fs::create_dir_all(dir).map_err(|e| format!("couldn't create {} ({e})", dir.display()))?;
+            }
+            let mut out = std::fs::File::create(&dest).map_err(|e| format!("couldn't write {} ({e})", dest.display()))?;
+            std::io::copy(&mut entry, &mut out).map_err(|e| format!("couldn't write {} ({e})", dest.display()))?;
+        }
+        let top = single_top_folder(&staged)?;
+        let exe = find_binary(&top, app).ok_or(format!("the download doesn't contain {}.exe", app.id))?;
+        let apps = paths.apps();
+        let home = apps.join(app.id.to_uppercase());
+        let old = existing.and_then(|r| r.path.parent()).filter(|p| p.starts_with(&apps)).map(|p| p.to_path_buf());
+        std::fs::create_dir_all(&home).map_err(|e| e.to_string())?;
+        let dest = home.join(top.file_name().map_or_else(|| app.id.to_string(), |n| n.to_string_lossy().to_string()));
+        swap_into_place(&top, &dest)?;
+        if let Some(old) = old.filter(|p| p != &dest) {
+            let _ = std::fs::remove_dir_all(&old);
+        }
+        let _ = std::fs::remove_dir_all(&staged);
+        Ok(dest.join(exe.file_name().unwrap_or_default()))
+    }
+
+    /// Fork: takes out the version folder the launcher unpacked into its own apps folder. Only
+    /// inside that folder, so a hand-placed app elsewhere is never touched, and the app folder's
+    /// own files (its card picture, an icon) are left alone.
+    pub fn remove_zip(record: &Record, paths: &Paths) -> Result<(), String> {
+        let apps = paths.apps();
+        let root = record.path.parent().ok_or("the record doesn't point inside a folder")?;
+        if !root.starts_with(&apps) || !root.is_dir() {
+            return Err("the app isn't in the launcher's apps folder".into());
+        }
+        std::fs::remove_dir_all(root).map_err(|e| format!("couldn't remove {} ({e})", root.display()))
+    }
+
     pub fn uninstall_msi(app: &CraftApp, stop: &Stop, phase: &mut dyn FnMut(JobPhase)) -> Result<(), String> {
         let installs = crate::detect::windows::msi_installs(app);
         if installs.is_empty() {
@@ -1215,6 +1277,68 @@ pub mod windows {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn a_portable_zip_lands_in_the_launcher_apps_folder_and_can_be_taken_out() {
+        use std::io::Write;
+
+        let app = CraftApp::by_id("cadcraft").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::under(dir.path());
+        let zip_path = dir.path().join("cadcraft-0.6.2-windows-x64-portable.zip");
+
+        let f = std::fs::File::create(&zip_path).unwrap();
+        let mut w = zip::ZipWriter::new(&f);
+        let opts = zip::write::FileOptions::<()>::default();
+        w.start_file("cadcraft-0.6.2-windows-x64-portable/cadcraft.exe", opts).unwrap();
+        w.write_all(b"exe").unwrap();
+        w.start_file("cadcraft-0.6.2-windows-x64-portable/README.txt", opts).unwrap();
+        w.write_all(b"readme").unwrap();
+        w.finish().unwrap();
+
+        let exe = windows::install_zip(app, &zip_path, &paths, None).unwrap();
+        assert_eq!(exe, paths.apps().join("CADCRAFT").join("cadcraft-0.6.2-windows-x64-portable").join("cadcraft.exe"));
+        assert!(exe.is_file(), "the exe wasn't unpacked");
+        assert!(exe.parent().unwrap().join("README.txt").is_file(), "the other files weren't unpacked");
+        assert!(!paths.cache.join("cadcraft.new").exists(), "the staging folder was left behind");
+
+        // An entry that would escape the staging folder is refused.
+        let bad = dir.path().join("bad.zip");
+        let f = std::fs::File::create(&bad).unwrap();
+        let mut w = zip::ZipWriter::new(&f);
+        w.start_file("../escaped.exe", zip::write::FileOptions::<()>::default()).unwrap();
+        w.write_all(b"exe").unwrap();
+        w.finish().unwrap();
+        assert!(windows::install_zip(app, &bad, &paths, None).is_err(), "an escaping entry was unpacked");
+
+        // An update lands in the same app folder and takes out the version folder the launcher
+        // unpacked before; a folder the user put there by hand is left alone.
+        let hand = paths.apps().join("GRIDCRAFT").join("gridcraft-0.5.0-windows-x64-portable");
+        std::fs::create_dir_all(&hand).unwrap();
+        std::fs::write(hand.join("gridcraft.exe"), "hand").unwrap();
+        let before = Record { version: "0.6.2".into(), kind: PackageKind::PortableZip, path: exe.clone(), installed_at: 1, files: vec![], needs_root: false };
+        let updated = windows::install_zip(app, &zip_path, &paths, Some(&before)).unwrap();
+        assert_eq!(updated, exe);
+        assert!(paths.apps().join("CADCRAFT").join("cadcraft-0.6.2-windows-x64-portable").is_dir(), "the update didn't land in the app's folder");
+        assert!(hand.is_dir(), "a folder the user put there by hand was removed");
+
+        // Removal takes the version folder the launcher unpacked and leaves the app folder's own
+        // files (its card picture) alone.
+        std::fs::write(paths.apps().join("CADCRAFT").join("cadcraft_card.png"), "card").unwrap();
+        let record = Record {
+            version: "0.6.2".into(),
+            kind: PackageKind::PortableZip,
+            path: exe,
+            installed_at: 1,
+            files: vec![],
+            needs_root: false,
+        };
+        windows::remove_zip(&record, &paths).unwrap();
+        assert!(!paths.apps().join("CADCRAFT").join("cadcraft-0.6.2-windows-x64-portable").exists());
+        assert!(paths.apps().join("CADCRAFT").join("cadcraft_card.png").is_file(), "the app folder's own file was removed with it");
+        assert!(windows::remove_zip(&record, &paths).is_err(), "a second removal says there is nothing there");
+    }
 
     #[test]
     fn swap_keeps_the_old_copy_until_the_new_one_is_in_place() {

@@ -36,6 +36,8 @@ plist = "1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.55"
+# Fork only: the portable zip is an install format here, so the release zips have to be unpacked.
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 
 [dev-dependencies]
