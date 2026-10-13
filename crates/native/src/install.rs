@@ -1241,22 +1241,16 @@ pub mod windows {
         Ok(root.join(exe.file_name().unwrap_or_default()))
     }
 
-    /// Fork: takes out a portable folder the launcher unpacked into its own apps folder. Only
-    /// inside that folder, so a hand-placed app elsewhere is never touched. The app's own folder
-    /// (the one directly under the apps folder) goes, not just the version folder inside it.
+    /// Fork: takes out the version folder the launcher unpacked into its own apps folder. Only
+    /// inside that folder, so a hand-placed app elsewhere is never touched, and the app folder's
+    /// own files (its card picture, an icon) are left alone.
     pub fn remove_zip(record: &Record, paths: &Paths) -> Result<(), String> {
         let apps = paths.apps();
-        let mut root = record.path.parent().ok_or("the record doesn't point inside a folder")?.to_path_buf();
-        while let Some(parent) = root.parent() {
-            if parent == apps {
-                break;
-            }
-            root = parent.to_path_buf();
-        }
+        let root = record.path.parent().ok_or("the record doesn't point inside a folder")?;
         if !root.starts_with(&apps) || !root.is_dir() {
             return Err("the app isn't in the launcher's apps folder".into());
         }
-        std::fs::remove_dir_all(&root).map_err(|e| format!("couldn't remove {} ({e})", root.display()))
+        std::fs::remove_dir_all(root).map_err(|e| format!("couldn't remove {} ({e})", root.display()))
     }
 
     pub fn uninstall_msi(app: &CraftApp, stop: &Stop, phase: &mut dyn FnMut(JobPhase)) -> Result<(), String> {
@@ -1315,7 +1309,9 @@ mod tests {
         w.finish().unwrap();
         assert!(windows::install_zip(app, &bad, &paths).is_err(), "an escaping entry was unpacked");
 
-        // Removal takes the folder the launcher unpacked and nothing outside it.
+        // Removal takes the version folder the launcher unpacked and leaves the app folder's own
+        // files (its card picture) alone.
+        std::fs::write(paths.apps().join("CADCRAFT").join("cadcraft_card.png"), "card").unwrap();
         let record = Record {
             version: "0.6.2".into(),
             kind: PackageKind::PortableZip,
@@ -1325,7 +1321,8 @@ mod tests {
             needs_root: false,
         };
         windows::remove_zip(&record, &paths).unwrap();
-        assert!(!paths.apps().join("CADCRAFT").exists());
+        assert!(!paths.apps().join("CADCRAFT").join("cadcraft-0.6.2-windows-x64-portable").exists());
+        assert!(paths.apps().join("CADCRAFT").join("cadcraft_card.png").is_file(), "the app folder's own file was removed with it");
         assert!(windows::remove_zip(&record, &paths).is_err(), "a second removal says there is nothing there");
     }
 
