@@ -1,12 +1,13 @@
 name: Release
 
+# The fork ships one artifact: the Windows portable zip. No signing, no other platforms,
+# no secrets needed. Run it from the Actions tab.
+
 on:
-  push:
-    branches: [release]
   workflow_dispatch:
     inputs:
       version:
-        description: "Version override for a test run, e.g. 0.2.0-rc.1 (empty: Cargo.toml)"
+        description: "Version override for a test run, e.g. 0.4.0-rc.1 (empty: Cargo.toml)"
         type: string
         default: ""
 
@@ -14,29 +15,70 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: fork-release
   cancel-in-progress: false
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
 jobs:
-  release:
-    # Intentionally tracked at @main (not SHA-pinned) so org-wide CI improvements, security fixes, and build optimizations propagate without PR churn across all craftapp repos.
-    uses: storytold/craft-common-actions/.github/workflows/release.yml@main
-    with:
-      app-name: craft-launcher
-      app-title: ArtCraft Launcher
-      version: ${{ inputs.version }}
-    secrets:
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
-      AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
-      AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
+  portable:
+    name: Windows portable zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: fork-release
+      - name: Apply version override
+        if: inputs.version != ''
+        run: cargo xtask version set "${{ inputs.version }}"
+      - name: Build, zip, checksum
+        shell: pwsh
+        run: ./packaging/windows/package-fork.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fork-release
+          path: dist/release/*
+          if-no-files-found: error
+
+  publish:
+    name: Draft GitHub Release
+    needs: portable
+    if: "!cancelled() && !contains(needs.*.result, 'failure')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: fork-release
+          path: artifacts
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -m1 -A2 '\[workspace.package\]' Cargo.toml | grep -oP 'version = "\K[^"]+')
+          fi
+          tag="v$VERSION"
+          title="Eternal Craft Launcher v$VERSION"
+          if draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$draft" != "true" ]; then
+              echo "::error::Release $tag is already published. Bump the version before running again."
+              exit 1
+            fi
+            echo "Updating draft $tag: replacing its assets"
+            gh release view "$tag" --json assets --jq '.assets[].name' | while read -r asset; do
+              gh release delete-asset "$tag" "$asset" --yes
+            done
+            gh release edit "$tag" --draft --title "$title" --target "$GITHUB_SHA"
+            gh release upload "$tag" --clobber -- artifacts/*
+          else
+            echo "Creating draft $tag"
+            gh release create "$tag" --draft --title "$title" --notes-file packaging/windows/fork-release-notes.md artifacts/*
+          fi
