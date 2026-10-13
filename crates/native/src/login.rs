@@ -1,4 +1,4 @@
-//! "Start ArtCraft Launcher when I log in".
+//! "Start Eternal Craft Launcher when I log in".
 //!
 //! - macOS: a LaunchAgent in `~/Library/LaunchAgents`.
 //! - Windows: a value under `HKCU\…\CurrentVersion\Run`.
@@ -35,7 +35,7 @@ pub fn is_enabled() -> bool {
     #[cfg(target_os = "macos")]
     return agent().is_ok_and(|p| p.exists());
     #[cfg(windows)]
-    return windows_run().and_then(|k| k.get_value::<String, _>("ArtCraft Launcher").ok()).is_some();
+    return windows_run().and_then(|k| k.get_value::<String, _>("Eternal Craft Launcher").ok()).is_some();
     #[cfg(not(any(target_os = "macos", windows)))]
     return autostart().is_ok_and(|p| p.exists());
 }
@@ -70,9 +70,9 @@ pub fn set_enabled(on: bool) -> Result<(), String> {
             .map_err(|e| format!("couldn't change the startup list ({e})"))?;
         if on {
             let value = format!("\"{}\" {HIDDEN_FLAG}", program()?.display());
-            key.set_value("ArtCraft Launcher", &value).map_err(|e| format!("couldn't change the startup list ({e})"))
+            key.set_value("Eternal Craft Launcher", &value).map_err(|e| format!("couldn't change the startup list ({e})"))
         } else {
-            match key.delete_value("ArtCraft Launcher") {
+            match key.delete_value("Eternal Craft Launcher") {
                 Ok(()) => Ok(()),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
                 Err(e) => Err(format!("couldn't change the startup list ({e})")),
@@ -87,7 +87,7 @@ pub fn set_enabled(on: bool) -> Result<(), String> {
         }
         let exe = program()?.display().to_string().replace('"', "\\\"");
         let entry = format!(
-            "[Desktop Entry]\nType=Application\nName=ArtCraft Launcher\nComment=Install and update the Craft App Suite\nExec=\"{exe}\" {HIDDEN_FLAG}\nIcon={ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
+            "[Desktop Entry]\nType=Application\nName=Eternal Craft Launcher\nComment=Install and update the Craft App Suite\nExec=\"{exe}\" {HIDDEN_FLAG}\nIcon={ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
         );
         crate::paths::write_atomic(&path, entry.as_bytes())
     }

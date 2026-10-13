@@ -27,14 +27,14 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package
-      Name="ArtCraft Launcher"
-      Manufacturer="Learning Machines LLC"
+      Name="Eternal Craft Launcher"
+      Manufacturer="EternalShade3D"
       Version="$(var.Version)"
       UpgradeCode="1AC08DBF-D4CF-4BA4-A81E-CAA5C1004974"
       Scope="perUser"
       Compressed="yes"
       Language="1033">
-    <SummaryInformation Description="ArtCraft Launcher: install and update the Craft App Suite" Manufacturer="Learning Machines LLC" />
+    <SummaryInformation Description="Eternal Craft Launcher: install and update the Craft App Suite" Manufacturer="EternalShade3D" />
     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
     <MajorUpgrade AllowSameVersionUpgrades="yes"

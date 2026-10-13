@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Repackage an ArtCraft Launcher Linux tarball as a single-file Flatpak bundle:
+# Repackage an Eternal Craft Launcher Linux tarball as a single-file Flatpak bundle:
 #
 #   $DIST/artcraft-launcher-<version>-linux-<arch>.flatpak
 #
@@ -44,7 +44,7 @@ for tool in flatpak flatpak-builder; do
   command -v "$tool" >/dev/null || { echo "error: $tool not found (apt install flatpak flatpak-builder librsvg2-common)" >&2; exit 1; }
 done
 
-echo "==> ArtCraft Launcher $VERSION Flatpak bundle for $ARCH from $(basename "$TARBALL")"
+echo "==> Eternal Craft Launcher $VERSION Flatpak bundle for $ARCH from $(basename "$TARBALL")"
 
 WORK="$CARGO_TARGET_DIR/flatpak-bundle"
 rm -rf "$WORK"

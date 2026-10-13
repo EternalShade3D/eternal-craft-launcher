@@ -11,16 +11,38 @@ pub struct Paths {
     pub cache: PathBuf,
 }
 
-const DIR: &str = if cfg!(any(target_os = "macos", target_os = "windows")) { "ArtCraft Launcher" } else { "artcraft-launcher" };
+const DIR: &str = if cfg!(any(target_os = "macos", target_os = "windows")) { "Eternal Craft Launcher" } else { "eternal-craft-launcher" };
+
+/// The folder name this fork used before it was renamed. An install that already has settings
+/// under the old name keeps them: the folder is renamed once on the next run.
+const OLD_DIR: &str = if cfg!(any(target_os = "macos", target_os = "windows")) { "ArtCraft Launcher" } else { "artcraft-launcher" };
+
+/// The path to use for a folder that may exist under the old name. Renames it once; if the rename
+/// fails, keeps using the old folder rather than starting an empty one.
+fn moved(new: &std::path::Path, old: &std::path::Path) -> PathBuf {
+    if new.exists() {
+        return new.to_path_buf();
+    }
+    if old.is_dir() {
+        return match std::fs::rename(old, new) {
+            Ok(()) => new.to_path_buf(),
+            Err(_) => old.to_path_buf(),
+        };
+    }
+    new.to_path_buf()
+}
 
 impl Paths {
     pub fn new() -> Result<Self, String> {
         if let Some(root) = portable_root() {
             return Ok(Self::under(&root));
         }
-        let data = dirs::data_local_dir().ok_or("no per-user data folder on this system")?.join(DIR);
-        let cache = dirs::cache_dir().ok_or("no per-user cache folder on this system")?.join(DIR);
-        Ok(Self { data, cache })
+        let base = dirs::data_local_dir().ok_or("no per-user data folder on this system")?;
+        let cache_base = dirs::cache_dir().ok_or("no per-user cache folder on this system")?;
+        Ok(Self {
+            data: moved(&base.join(DIR), &base.join(OLD_DIR)),
+            cache: moved(&cache_base.join(DIR), &cache_base.join(OLD_DIR)),
+        })
     }
 
     /// For tests: everything under one folder.
@@ -98,9 +120,34 @@ pub fn write_atomic(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> 
 }
 
 /// Portable mode: a `portable.txt` beside the executable keeps everything in
-/// `ArtCraftLauncherData` next to it (the Windows portable zip ships one).
+/// `EternalCraftLauncherData` next to it (the Windows portable zip ships one). A folder left
+/// behind by an older build under the old name is renamed once, so an existing install keeps its
+/// settings.
 pub fn portable_root() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    dir.join("portable.txt").is_file().then(|| dir.join("ArtCraftLauncherData"))
+    if !dir.join("portable.txt").is_file() {
+        return None;
+    }
+    Some(moved(&dir.join("EternalCraftLauncherData"), &dir.join("ArtCraftLauncherData")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_left_under_the_old_name_are_moved_to_the_new_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = dir.path().join("ArtCraftLauncherData");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("installed.json"), b"{}").unwrap();
+        let new = dir.path().join("EternalCraftLauncherData");
+        assert_eq!(moved(&new, &old), new);
+        assert!(new.join("installed.json").is_file());
+        // A folder already under the new name wins: nothing is moved into it.
+        std::fs::create_dir_all(&old).unwrap();
+        assert_eq!(moved(&new, &old), new);
+        assert!(old.is_dir());
+    }
 }

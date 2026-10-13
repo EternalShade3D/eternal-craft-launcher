@@ -17,7 +17,7 @@ set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 
 PKG=artcraft-launcher
-APP_NAME="ArtCraft Launcher"
+APP_NAME="Eternal Craft Launcher"
 
 ARCH=universal
 while [ $# -gt 0 ]; do

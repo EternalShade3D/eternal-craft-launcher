@@ -1,6 +1,6 @@
 [package]
 name = "artcraft-launcher-ui-egui"
-description = "ArtCraft Launcher's egui interface, shared by the desktop and web builds"
+description = "Eternal Craft Launcher's egui interface, shared by the desktop and web builds"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

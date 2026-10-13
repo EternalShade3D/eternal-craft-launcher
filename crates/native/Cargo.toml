@@ -1,6 +1,6 @@
 [package]
 name = "artcraft-launcher-native"
-description = "ArtCraft Launcher desktop backend: release lookups, detecting installed Craft Apps, installing and updating them"
+description = "Eternal Craft Launcher desktop backend: release lookups, detecting installed Craft Apps, installing and updating them"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

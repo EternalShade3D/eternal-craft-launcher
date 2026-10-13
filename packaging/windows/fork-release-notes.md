@@ -5,7 +5,7 @@ What this fork does differently is in [FORK.md](FORK.md) and the README: it inst
 Craft apps as portable zips inside the launcher's own `APPS` folder instead of through Windows
 Installer into `C:\Program Files`.
 
-Unzip and run `eternal-craft-launcher.exe`. Settings stay in `ArtCraftLauncherData` beside it.
+Unzip and run `eternal-craft-launcher.exe`. Settings stay in `EternalCraftLauncherData` beside it.
 
 Check the zip against `SHA256SUMS.txt` in this release.
 

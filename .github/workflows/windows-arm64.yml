@@ -29,6 +29,6 @@ jobs:
     uses: storytold/craft-common-actions/.github/workflows/windows-arm64.yml@main
     with:
       app-name: craft-launcher
-      app-dir: ArtCraft Launcher
+      app-dir: Eternal Craft Launcher
       is-per-user: true
       main-binary: artcraft-launcher.exe

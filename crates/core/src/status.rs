@@ -30,7 +30,7 @@ pub enum InstallSource {
 impl InstallSource {
     pub fn label(self) -> &'static str {
         match self {
-            Self::Launcher => "ArtCraft Launcher",
+            Self::Launcher => "Eternal Craft Launcher",
             Self::MacApp => "Applications folder",
             Self::Msi => "Windows Installer",
             Self::Deb => "Debian package",

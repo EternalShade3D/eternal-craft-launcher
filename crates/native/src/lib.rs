@@ -1,4 +1,4 @@
-//! ArtCraft Launcher's desktop backend.
+//! Eternal Craft Launcher's desktop backend.
 //!
 //! [`NativeBackend`] runs every slow thing (HTTP, scanning disks, installers) on worker threads
 //! and reports back through [`Event`](artcraft_launcher_core::protocol::Event)s, so the UI never

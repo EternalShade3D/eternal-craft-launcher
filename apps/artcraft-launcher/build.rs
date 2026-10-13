@@ -13,12 +13,12 @@ fn main() {
     }
     let mut res = winresource::WindowsResource::new();
     res.set_icon("../../assets/app-icon/artcraft-launcher.ico")
-        .set("ProductName", "ArtCraft Launcher")
-        .set("FileDescription", "ArtCraft Launcher")
-        .set("CompanyName", "Learning Machines LLC")
-        .set("LegalCopyright", "Copyright (c) the ArtCraft Launcher authors. MIT OR Apache-2.0.")
-        .set("OriginalFilename", "artcraft-launcher.exe")
-        .set("InternalName", "artcraft-launcher");
+        .set("ProductName", "Eternal Craft Launcher")
+        .set("FileDescription", "Eternal Craft Launcher")
+        .set("CompanyName", "EternalShade3D")
+        .set("LegalCopyright", "Copyright (c) the ArtCraft Launcher authors and EternalShade3D. MIT OR Apache-2.0.")
+        .set("OriginalFilename", "eternal-craft-launcher.exe")
+        .set("InternalName", "eternal-craft-launcher");
     if let Err(e) = res.compile() {
         if std::env::var_os("ARTCRAFT_LAUNCHER_REQUIRE_WINRES").is_some() {
             println!("cargo:warning=embedding Windows resources failed: {e}");

@@ -1,4 +1,4 @@
-# Spanish (es) catalog for ArtCraft Launcher.
+# Spanish (es) catalog for Eternal Craft Launcher.
 # Format: context<TAB>source<TAB>translation
 # Empty context = plain UI string (tl!, t).
 # @id = command-id keyed (tr_id).
@@ -6,12 +6,12 @@
 # @msg = status/error message template (message, msg).
 # Other context = disambiguation for tr_ctx.
 #
-# Clean-room: written from the meaning of ArtCraft Launcher's English labels, in neutral
+# Clean-room: written from the meaning of Eternal Craft Launcher's English labels, in neutral
 # international Spanish for Spain and Latin America (the interface addresses the user as "tú";
 # no regional words such as "ordenador").
 #
 # Coverage: the whole interface: every menu string and tl! literal (complete_menus = true).
-# Left in English on purpose: product name "ArtCraft Launcher" (and its "Launcher" tag), suite
+# Left in English on purpose: product name "Eternal Craft Launcher" (and its "Launcher" tag), suite
 # name "Craft App Suite", app names (PhotoCraft, LightCraft, FilmCraft,
 # DesignCraft, VectorCraft, PdfCraft, EffectCraft, WordCraft, DeckCraft, GridCraft, CADCraft,
 # SoundCraft), "GitHub", "Discord", "Finder", "makers".
@@ -73,7 +73,7 @@
 	Reinstall	Reinstalar
 	Uninstall…	Desinstalar…
 	All releases	Todas las versiones
-	ArtCraft Launcher {version} is available.	ArtCraft Launcher {version} está disponible.
+	Eternal Craft Launcher {version} is available.	Eternal Craft Launcher {version} está disponible.
 	Dismiss	Descartar
 	Update and restart	Actualizar y reiniciar
 	A new version is available. Would you like to relaunch with the updated version?	Hay una versión nueva. ¿Quieres reiniciar con la versión actualizada?
@@ -83,7 +83,7 @@
 	Released {date}	Publicada el {date}
 	Open on GitHub	Abrir en GitHub
 	Close	Cerrar
-	ArtCraft Launcher {version}	ArtCraft Launcher {version}
+	Eternal Craft Launcher {version}	Eternal Craft Launcher {version}
 	Only when I ask	Solo cuando lo pida
 	Automatically download and install updates	Descargar e instalar actualizaciones automáticamente
 	Notify me when an installed app has an update	Avisarme cuando una aplicación instalada tenga una actualización
@@ -95,11 +95,11 @@
 	Running in the background	En segundo plano
 	Keep running in the tray when the window is closed	Seguir abierto en la bandeja del sistema al cerrar la ventana
 	Show the window on the current desktop	Mostrar la ventana en el escritorio actual
-	Start ArtCraft Launcher when I log in	Abrir ArtCraft Launcher al iniciar sesión
+	Start Eternal Craft Launcher when I log in	Abrir Eternal Craft Launcher al iniciar sesión
 	Community	Comunidad
 	Questions, ideas and news from the ArtCraft team	Preguntas, ideas y noticias del equipo de ArtCraft
 	Appearance	Apariencia
-	Quit ArtCraft Launcher	Salir de ArtCraft Launcher
+	Quit Eternal Craft Launcher	Salir de Eternal Craft Launcher
 	Done	Listo
 	Uninstall {name}?	¿Desinstalar {name}?
 	The app will be moved to the Trash. Your documents and settings stay.	La aplicación se moverá a la Papelera. Tus documentos y ajustes se conservan.
@@ -133,7 +133,7 @@
 	Open link	Abrir enlace
 	Update	Actualizar
 	{name} icon	Icono de {name}
-	Loading ArtCraft Launcher…	Cargando ArtCraft Launcher…
+	Loading Eternal Craft Launcher…	Cargando Eternal Craft Launcher…
 	Cancel update	Cancelar la actualización
 	Stop waiting; the update can be started again later	Dejar de esperar; la actualización se puede volver a iniciar más tarde
 	Download again	Volver a descargar
@@ -204,7 +204,7 @@ month	Dec	dic.
 	Version {version} installed	Versión {version} instalada
 	Version {latest}	Versión {latest}
 	No release published yet	Aún no hay ninguna versión publicada
-	ArtCraft Launcher	ArtCraft Launcher
+	Eternal Craft Launcher	Eternal Craft Launcher
 	App	Aplicación
 	Latest	Última
 	Released	Publicada
@@ -239,11 +239,11 @@ month	Dec	dic.
 	Full changelog	Registro de cambios completo
 	link	enlace
 	No apps match	Ninguna aplicación coincide
-	Open ArtCraft Launcher to update.	Abre ArtCraft Launcher para actualizar.
+	Open Eternal Craft Launcher to update.	Abre Eternal Craft Launcher para actualizar.
 	{name} {v} is available	{name} {v} está disponible
 	{count} updates are available	Hay {count} actualizaciones disponibles
 	These notes weren't fetched (GitHub's request limit was reached). They're on the release page.	Estas notas no se descargaron (se alcanzó el límite de solicitudes de GitHub). Están en la página de la versión.
-	When on, opening the launcher from the menu bar brings its window to the desktop you're on. When off, macOS switches you to the desktop the window was on.	Si está activado, abrir ArtCraft Launcher desde la barra de menús lleva su ventana al escritorio en el que estás. Si está desactivado, macOS te cambia al escritorio en el que estaba la ventana.
+	When on, opening the launcher from the menu bar brings its window to the desktop you're on. When off, macOS switches you to the desktop the window was on.	Si está activado, abrir Eternal Craft Launcher desde la barra de menús lleva su ventana al escritorio en el que estás. Si está desactivado, macOS te cambia al escritorio en el que estaba la ventana.
 	Couldn't change the login item: {e}	No se pudo cambiar el elemento de inicio de sesión: {e}
 column	App	Aplicación
 column	Installed	Instalada
@@ -292,7 +292,7 @@ filter	Installed	Instaladas
 @id	launcher.notes	Novedades
 @id	launcher.dismiss	Descartar
 @id	settings.open	Ajustes
-@id	settings.quit	Salir de ArtCraft Launcher
+@id	settings.quit	Salir de Eternal Craft Launcher
 @id	view.grid	Cuadrícula
 @id	view.table	Tabla
 @id	filter.all	Todas
@@ -316,11 +316,11 @@ filter	Installed	Instaladas
 @id	linux.preferred_kind	Instalar las aplicaciones nuevas como
 @id	tray.close_to_tray	Seguir abierto en la bandeja del sistema al cerrar la ventana
 @id	tray.show_on_current_desktop	Mostrar la ventana en el escritorio actual
-@id	tray.login_item	Abrir ArtCraft Launcher al iniciar sesión
+@id	tray.login_item	Abrir Eternal Craft Launcher al iniciar sesión
 @id	appearance.theme	Apariencia
-	Show ArtCraft Launcher	Mostrar ArtCraft Launcher
+	Show Eternal Craft Launcher	Mostrar Eternal Craft Launcher
 	Check for Updates	Buscar actualizaciones
 	Visit getartcraft.com	Visitar getartcraft.com
 	ArtCraft on GitHub	ArtCraft en GitHub
 	Join the ArtCraft Discord	Únete al Discord de ArtCraft
-@plural	ArtCraft Launcher · {n} update available|ArtCraft Launcher · {n} updates available	ArtCraft Launcher · {n} actualización disponible|ArtCraft Launcher · {n} actualizaciones disponibles
+@plural	Eternal Craft Launcher · {n} update available|Eternal Craft Launcher · {n} updates available	Eternal Craft Launcher · {n} actualización disponible|Eternal Craft Launcher · {n} actualizaciones disponibles

@@ -1,4 +1,4 @@
-# Flatpak manifest for ArtCraft Launcher, ready for a Flathub submission.
+# Flatpak manifest for Eternal Craft Launcher, ready for a Flathub submission.
 #
 # Flatpak builds run offline, so the crate sources must be vendored first. From the repo root:
 #

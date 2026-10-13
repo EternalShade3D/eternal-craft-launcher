@@ -1,4 +1,4 @@
-# Hungarian (hu) catalog for ArtCraft Launcher.
+# Hungarian (hu) catalog for Eternal Craft Launcher.
 # Format: context<TAB>source<TAB>translation
 # Empty context = plain UI string (tl!, t).
 # @id = command-id keyed (tr_id).
@@ -6,12 +6,12 @@
 # @msg = status/error message template (message, msg).
 # Other context = disambiguation for tr_ctx.
 #
-# Clean-room: written from the meaning of ArtCraft Launcher's English labels in neutral Hungarian,
+# Clean-room: written from the meaning of Eternal Craft Launcher's English labels in neutral Hungarian,
 # using the terms Hungarian-speaking users of creative software know. The user is addressed with
 # the informal "te", as in most current creative and community software.
 #
 # Coverage: the whole interface — every menu string and tl! literal (complete_menus = true).
-# Left in English on purpose: product name "ArtCraft Launcher" (and its "Launcher" tag), suite
+# Left in English on purpose: product name "Eternal Craft Launcher" (and its "Launcher" tag), suite
 # name "Craft App Suite",
 # app names (PhotoCraft, LightCraft, FilmCraft, DesignCraft, VectorCraft, PdfCraft, EffectCraft,
 # WordCraft, DeckCraft, GridCraft, CADCraft, SoundCraft), "GitHub", "Discord".
@@ -73,7 +73,7 @@
 	Reinstall	Újratelepítés
 	Uninstall…	Eltávolítás…
 	All releases	Minden kiadás
-	ArtCraft Launcher {version} is available.	Elérhető az ArtCraft Launcher új verziója: {version}.
+	Eternal Craft Launcher {version} is available.	Elérhető az Eternal Craft Launcher új verziója: {version}.
 	Dismiss	Elrejtés
 	Update and restart	Frissítés és újraindítás
 	A new version is available. Would you like to relaunch with the updated version?	Új verzió érhető el. Újraindítod az alkalmazást a frissítéshez?
@@ -83,7 +83,7 @@
 	Released {date}	Megjelent: {date}
 	Open on GitHub	Megnyitás a GitHubon
 	Close	Bezárás
-	ArtCraft Launcher {version}	ArtCraft Launcher {version}
+	Eternal Craft Launcher {version}	Eternal Craft Launcher {version}
 	Only when I ask	Csak kézi kereséskor
 	Automatically download and install updates	Frissítések automatikus letöltése és telepítése
 	Notify me when an installed app has an update	Értesítés a telepített alkalmazásokhoz elérhető frissítésekről
@@ -95,11 +95,11 @@
 	Running in the background	Futtatás a háttérben
 	Keep running in the tray when the window is closed	Az ablak bezárásakor kerüljön a tálcára
 	Show the window on the current desktop	Ablak megjelenítése az aktuális asztalon
-	Start ArtCraft Launcher when I log in	ArtCraft Launcher indítása bejelentkezéskor
+	Start Eternal Craft Launcher when I log in	Eternal Craft Launcher indítása bejelentkezéskor
 	Community	Közösség
 	Questions, ideas and news from the ArtCraft team	Kérdések, ötletek és hírek az ArtCraft csapatától
 	Appearance	Megjelenés
-	Quit ArtCraft Launcher	Kilépés az ArtCraft Launcherből
+	Quit Eternal Craft Launcher	Kilépés az Eternal Craft Launcherből
 	Done	Kész
 	Uninstall {name}?	{name} eltávolítása?
 	The app will be moved to the Trash. Your documents and settings stay.	Az alkalmazás a Kukába kerül. A dokumentumaid és beállításaid megmaradnak.
@@ -134,7 +134,7 @@
 	Open link	Hivatkozás megnyitása
 	Update	Frissítés
 	{name} icon	{name} ikonja
-	Loading ArtCraft Launcher…	ArtCraft Launcher betöltése…
+	Loading Eternal Craft Launcher…	Eternal Craft Launcher betöltése…
 	Cancel update	Frissítés megszakítása
 	Stop waiting; the update can be started again later	Megszakítja a várakozást. A frissítést később újra elindíthatod.
 	Download again	Újbóli letöltés
@@ -211,7 +211,7 @@ month	Dec	dec.
 	Version {version} installed	Telepített verzió: {version}
 	Version {latest}	Verzió: {latest}
 	No release published yet	Még nem jelent meg kiadás
-	ArtCraft Launcher	ArtCraft Launcher
+	Eternal Craft Launcher	Eternal Craft Launcher
 	App	Alkalmazás
 	Latest	Legújabb
 	Released	Megjelent
@@ -246,11 +246,11 @@ month	Dec	dec.
 	Full changelog	Teljes változásnapló
 	link	hivatkozás
 	No apps match	Nincs találat
-	Open ArtCraft Launcher to update.	Nyisd meg az ArtCraft Launchert a frissítéshez.
+	Open Eternal Craft Launcher to update.	Nyisd meg az Eternal Craft Launchert a frissítéshez.
 	{name} {v} is available	Elérhető: {name} {v}
 	{count} updates are available	{count} frissítés elérhető
 	These notes weren't fetched (GitHub's request limit was reached). They're on the release page.	A kiadási információkat nem sikerült betölteni, mert elértük a GitHub lekérdezési korlátját. A kiadás oldalán megtalálod őket.
-	When on, opening the launcher from the menu bar brings its window to the desktop you're on. When off, macOS switches you to the desktop the window was on.	Ha be van kapcsolva, a menüsorból megnyitott ArtCraft Launcher ablaka az aktuális asztalon jelenik meg. Ha ki van kapcsolva, a macOS arra az asztalra vált, ahol az ablak található.
+	When on, opening the launcher from the menu bar brings its window to the desktop you're on. When off, macOS switches you to the desktop the window was on.	Ha be van kapcsolva, a menüsorból megnyitott Eternal Craft Launcher ablaka az aktuális asztalon jelenik meg. Ha ki van kapcsolva, a macOS arra az asztalra vált, ahol az ablak található.
 	Couldn't change the login item: {e}	Az automatikus indítás beállítását nem sikerült módosítani: {e}
 
 # Contextual: table column headers
@@ -310,7 +310,7 @@ filter	Installed	Telepítve
 @id	launcher.notes	Újdonságok
 @id	launcher.dismiss	Elrejtés
 @id	settings.open	Beállítások
-@id	settings.quit	Kilépés az ArtCraft Launcherből
+@id	settings.quit	Kilépés az Eternal Craft Launcherből
 @id	view.grid	Rács
 @id	view.table	Táblázat
 @id	filter.all	Összes
@@ -334,13 +334,13 @@ filter	Installed	Telepítve
 @id	linux.preferred_kind	Új alkalmazások csomagformátuma
 @id	tray.close_to_tray	Az ablak bezárásakor kerüljön a tálcára
 @id	tray.show_on_current_desktop	Ablak megjelenítése az aktuális asztalon
-@id	tray.login_item	ArtCraft Launcher indítása bejelentkezéskor
+@id	tray.login_item	Eternal Craft Launcher indítása bejelentkezéskor
 @id	appearance.theme	Megjelenés
 
 # Tray (menu bar) menu and tooltip
-	Show ArtCraft Launcher	ArtCraft Launcher megjelenítése
+	Show Eternal Craft Launcher	Eternal Craft Launcher megjelenítése
 	Check for Updates	Frissítések keresése
 	Visit getartcraft.com	getartcraft.com megnyitása
 	ArtCraft on GitHub	ArtCraft a GitHubon
 	Join the ArtCraft Discord	Csatlakozás az ArtCraft Discord-közösségéhez
-@plural	ArtCraft Launcher · {n} update available|ArtCraft Launcher · {n} updates available	ArtCraft Launcher · {n} frissítés elérhető|ArtCraft Launcher · {n} frissítés elérhető
+@plural	Eternal Craft Launcher · {n} update available|Eternal Craft Launcher · {n} updates available	Eternal Craft Launcher · {n} frissítés elérhető|Eternal Craft Launcher · {n} frissítés elérhető

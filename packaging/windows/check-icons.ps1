@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Check MSI icon references without building or installing ArtCraft Launcher.
+  Check MSI icon references without building or installing Eternal Craft Launcher.
 
 .DESCRIPTION
   Windows Installer caches each <Icon> under its Id as a file name, so a shortcut icon Id needs an

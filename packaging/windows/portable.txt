@@ -1,9 +1,12 @@
-ArtCraft Launcher portable mode
+Eternal Craft Launcher portable mode
 
-While this file sits next to artcraft-launcher.exe, ArtCraft Launcher keeps its settings, its
-download cache and its record of installed apps in the ArtCraftLauncherData folder beside it, and
-writes nothing to %APPDATA%. Copy the whole folder to move ArtCraft Launcher with its settings.
+While this file sits next to eternal-craft-launcher.exe, Eternal Craft Launcher keeps its settings,
+its download cache and its record of installed apps in the EternalCraftLauncherData folder beside
+it, and writes nothing to %LOCALAPPDATA%. Copy the whole folder to move Eternal Craft Launcher with
+its settings.
 
-Delete this file to use the normal per-user settings folder (%APPDATA%\ArtCraft Launcher) instead.
-If ArtCraftLauncherData can't be written (for example on a read-only drive), ArtCraft Launcher says
-so and uses %APPDATA%\ArtCraft Launcher instead.
+Delete this file to use the normal per-user settings folder (%LOCALAPPDATA%\Eternal Craft Launcher)
+instead.
+
+If EternalCraftLauncherData can't be written (for example on a read-only drive), Eternal Craft
+Launcher says so and uses %LOCALAPPDATA%\Eternal Craft Launcher instead.
