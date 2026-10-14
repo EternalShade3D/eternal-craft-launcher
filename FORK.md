@@ -20,9 +20,10 @@ Branch: `portable-zip-install`
 | 5 | New `windows::remove_zip()` — takes out only the version folder the launcher unpacked | `crates/native/src/install.rs` |
 | 6 | `apps()` resolves to an `APPS` folder beside the launcher in portable mode | `crates/native/src/paths.rs` |
 | 7 | New dependency: `zip` 9, read-only features | `crates/native/Cargo.toml` |
-| 8 | Two tests added | `crates/native/src/install.rs`, `crates/native/src/detect.rs` |
+| 8 | Settings shows the install-format picker on Windows too (upstream: Linux only) | `crates/ui-egui/src/settings.rs` |
+| 9 | Tests: 3 native + 1 UI | `crates/native/src/install.rs`, `crates/native/src/detect.rs`, `crates/ui-egui/tests/ui.rs` |
 
-Diff against upstream: 5 files, +209 / -2.
+Diff against upstream: 7 files, +510 / -53.
 
 ### 1. Windows install formats
 
@@ -69,6 +70,18 @@ updates land where the apps already are.
 
 Unchanged. `from_manifest()` already reads `installed.json` before anything else; the fork only
 makes sure a record can point at a portable exe.
+
+### 5. Choosing the format in the app
+
+Upstream only shows the "Install new apps as" row in Settings on Linux, so a Windows user had no way
+to say which format to use — the code order decided it. The fork shows the row on Windows as well,
+listing the formats the release actually has.
+
+The choice is stored in `settings.json` as `preferred_kinds` and reaches the installer through
+`BackendOptions.kinds` → `install::choose_kinds()`, which puts the preference first. An already
+installed app still keeps its own format: the preference only applies to new installs.
+
+Default on Windows is the portable zip, so nothing changes for anyone who never opens Settings.
 
 ## Build from source
 

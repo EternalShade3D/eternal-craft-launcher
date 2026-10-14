@@ -13,7 +13,7 @@ use artcraft_launcher_core::protocol::{
 };
 use artcraft_launcher_core::release::{Asset, Release};
 use artcraft_launcher_core::status::InstallSource;
-use artcraft_launcher_core::{Arch, Installed, Os, Platform, SUITE, version};
+use artcraft_launcher_core::{Arch, Installed, Os, PackageKind, Platform, SUITE, version};
 use artcraft_launcher_ui_egui::settings::ViewMode;
 use artcraft_launcher_ui_egui::{Host, LauncherUi, Settings};
 use egui_kittest::Harness;
@@ -52,6 +52,9 @@ struct Fake {
     events: Vec<Event>,
     sent: Rc<RefCell<Vec<Command>>>,
     manage: bool,
+    /// The machine the fake backend reports the UI is running on. The install-format picker only
+    /// appears where there is more than one format to choose, so tests that need one set it.
+    os: Os,
     pictures: Rc<Cell<Pictures>>,
     /// Apps whose pictures were asked for and not answered yet.
     asked: Vec<String>,
@@ -86,7 +89,7 @@ impl Backend for Fake {
         Capabilities { manage_apps: self.manage, reveal_label: "Show in Finder", self_update: self.manage }
     }
     fn platform(&self) -> Option<Platform> {
-        Some(Platform { os: Os::MacOs, arch: Arch::Arm64 })
+        Some(Platform { os: self.os, arch: Arch::Arm64 })
     }
     fn now(&self) -> i64 {
         self.clock.get()
@@ -172,7 +175,13 @@ fn harness_with(
     manage: bool,
     scale: f32,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, Rc::default())
+    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, Rc::default(), Os::MacOs)
+}
+
+/// Fork: the install-format picker appears on Windows, where there is a real choice between the
+/// portable zip and the installer.
+fn harness_windows(view: ViewMode, theme: egui::Theme, manage: bool) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
+    harness_full(events(), view, theme, manage, 1.0, artcraft_launcher_ui_egui::TitleBar::Native, Rc::default(), Os::Windows)
 }
 
 /// Like `harness_with`, with the details pictures answered as `pictures` says (changeable during the test).
@@ -184,7 +193,7 @@ fn harness_pictures(
     scale: f32,
     pictures: Rc<Cell<Pictures>>,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, pictures)
+    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, pictures, Os::MacOs)
 }
 
 fn harness_with_title_bar(
@@ -195,7 +204,7 @@ fn harness_with_title_bar(
     scale: f32,
     bar: artcraft_launcher_ui_egui::TitleBar,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    harness_full(events, view, theme, manage, scale, bar, Rc::default())
+    harness_full(events, view, theme, manage, scale, bar, Rc::default(), Os::MacOs)
 }
 
 fn harness_full(
@@ -206,6 +215,7 @@ fn harness_full(
     scale: f32,
     bar: artcraft_launcher_ui_egui::TitleBar,
     pictures: Rc<Cell<Pictures>>,
+    os: Os,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
     struct HeaderHost(artcraft_launcher_ui_egui::TitleBar);
     impl Host for HeaderHost {
@@ -218,7 +228,7 @@ fn harness_full(
     artcraft_launcher_ui_egui::i18n::set_test_lang(artcraft_launcher_ui_egui::i18n::Lang::EN);
     let sent = Rc::new(RefCell::new(Vec::new()));
     let sent2 = sent.clone();
-    let mut backend = Some(Fake { events, sent: sent2, manage, pictures, asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+    let mut backend = Some(Fake { events, sent: sent2, manage, os, pictures, asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
     let settings = Settings { view, notify: false, ..Settings::default() };
     // No `.wgpu()`: it gives every test its own GPU device, and those segfault on parallel test threads (see above).
     // The default renderer creates one only when a test renders.
@@ -255,7 +265,15 @@ fn snapshot(h: &mut Harness<'_, Option<LauncherUi>>, name: &str) {
 fn keeps_working_with_no_window_then_draws_in_a_new_one() {
     let sent = Rc::new(RefCell::new(Vec::new()));
     let backend =
-        Fake { events: events(), sent: sent.clone(), manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) };
+        Fake {
+            os: Os::MacOs,
+            events: events(),
+            sent: sent.clone(),
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: Rc::new(Cell::new(NOW)),
+        };
     let windowless = egui::Context::default();
     let mut ui = LauncherUi::new(&windowless, Box::new(backend), Settings { notify: false, ..Settings::default() });
     // No window: the backend's news is still taken in.
@@ -595,6 +613,34 @@ fn settings_link_to_discord() {
     assert!(h.query_all_by_label_contains("Discord").count() >= 2);
 }
 
+/// Fork: Settings offers the install-format choice on Windows too, between the portable zip and the
+/// installer. Upstream shows it only on Linux, so the fake backend has to report Windows for the row
+/// to appear.
+#[test]
+fn settings_can_choose_the_windows_package_format() {
+    let (mut h, _) = harness_windows(ViewMode::Grid, egui::Theme::Dark, true);
+    h.run_steps(6);
+    h.get_by_label("Settings").click();
+    h.run_steps(4);
+    h.get_by_label("Install new apps as");
+    // The portable zip is the default, matching `install::available_kinds()`.
+    assert_eq!(h.state().as_ref().unwrap().settings.preferred_kinds, vec![PackageKind::PortableZip]);
+    // Open the combo (its own text is a `value`, not a label) and pick the installer; the choice is
+    // kept, and a new install would use it.
+    h.get_by_value("Portable (.zip)").click();
+    h.run_steps(2);
+    h.get_by_label("Installer (.msi)").click();
+    h.run_steps(2);
+    assert_eq!(h.state().as_ref().unwrap().settings.preferred_kinds, vec![PackageKind::Msi]);
+
+    // macOS ships one format, so there is nothing to choose and no row.
+    let (mut mac, _) = harness(ViewMode::Grid, egui::Theme::Dark, true);
+    mac.run_steps(6);
+    mac.get_by_label("Settings").click();
+    mac.run_steps(4);
+    assert!(mac.query_by_label_contains("Install new apps as").is_none());
+}
+
 #[test]
 fn the_uninstall_prompt_keeps_its_own_size_after_a_taller_dialog() {
     let (mut h, _) = harness(ViewMode::Grid, egui::Theme::Dark, true);
@@ -698,7 +744,15 @@ fn looks_again_at_installed_apps_every_few_minutes_not_every_frame() {
     let sent = Rc::new(RefCell::new(Vec::new()));
     let clock = Rc::new(Cell::new(NOW));
     let mut backend =
-        Some(Fake { events: events(), sent: sent.clone(), manage: true, pictures: Rc::default(), asked: Vec::new(), clock: clock.clone() });
+        Some(Fake {
+            os: Os::MacOs,
+            events: events(),
+            sent: sent.clone(),
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: clock.clone(),
+        });
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
@@ -762,7 +816,15 @@ fn the_launcher_updates_itself_and_quits_to_restart() {
     let quit = Rc::new(Cell::new(false));
     let mut host = QuitHost(quit.clone());
     let mut backend = Some(Scripted {
-        inner: Fake { events, sent: sent.clone(), manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) },
+        inner: Fake {
+            os: Os::MacOs,
+            events,
+            sent: sent.clone(),
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: Rc::new(Cell::new(NOW)),
+        },
         later: shared_events.clone(),
     });
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
@@ -843,7 +905,15 @@ fn feed_announcements_and_alerts_show_until_dismissed() {
         announcements: vec![notice("a1", "CADCraft 1.0 is out", Some("https://getartcraft.com/news"))],
         alerts: vec![notice("x1", "Security update", Some("https://getartcraft.com/security"))],
     });
-    let mut backend = Some(Fake { events: evs, sent, manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+        let mut backend = Some(Fake {
+        os: Os::MacOs,
+        events: evs,
+        sent,
+        manage: true,
+        pictures: Rc::default(),
+        asked: Vec::new(),
+        clock: Rc::new(Cell::new(NOW)),
+    });
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
@@ -891,7 +961,15 @@ fn automatic_updates_queue_installs_for_outdated_apps_and_launcher() {
     let sent = Rc::new(RefCell::new(Vec::new()));
     let sent2 = sent.clone();
     let mut backend =
-        Some(Fake { events: ev, sent: sent2, manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+        Some(Fake {
+            os: Os::MacOs,
+            events: ev,
+            sent: sent2,
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: Rc::new(Cell::new(NOW)),
+        });
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
@@ -920,7 +998,15 @@ fn automatic_updates_are_disabled_by_default() {
     let sent = Rc::new(RefCell::new(Vec::new()));
     let sent2 = sent.clone();
     let mut backend =
-        Some(Fake { events: ev, sent: sent2, manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+        Some(Fake {
+            os: Os::MacOs,
+            events: ev,
+            sent: sent2,
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: Rc::new(Cell::new(NOW)),
+        });
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
@@ -947,7 +1033,15 @@ fn the_footer_names_the_services_behind_what_is_on_screen() {
         let mut evs = events();
         evs.extend(extra);
         let sent = Rc::new(RefCell::new(Vec::new()));
-        let mut backend = Some(Fake { events: evs, sent, manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+            let mut backend = Some(Fake {
+            os: Os::MacOs,
+            events: evs,
+            sent,
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: Rc::new(Cell::new(NOW)),
+        });
         let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
             move |ui, state: &mut Option<LauncherUi>| {
                 if state.is_none()
@@ -994,6 +1088,7 @@ fn custom_title_bar_has_window_buttons() {
         events: events(),
         sent: Rc::new(RefCell::new(Vec::new())),
         manage: true,
+        os: Os::MacOs,
         pictures: Rc::default(),
         asked: Vec::new(),
         clock: Rc::new(Cell::new(NOW)),
@@ -1284,6 +1379,7 @@ fn the_rate_limit_notice_never_runs_under_the_footer_links() {
             events: evs,
             sent: Rc::new(RefCell::new(Vec::new())),
             manage: true,
+            os: Os::MacOs,
             pictures: Rc::default(),
             asked: Vec::new(),
             clock: Rc::new(Cell::new(NOW)),
@@ -1381,7 +1477,15 @@ fn short_window(reduce: Rc<Cell<bool>>) -> Harness<'static, Option<LauncherUi>> 
     artcraft_launcher_ui_egui::i18n::set_test_lang(artcraft_launcher_ui_egui::i18n::Lang::EN);
     let events = events().into_iter().filter(|e| !matches!(e, Event::Progress { .. })).collect();
     let mut backend =
-        Some(Fake { events, sent: Rc::default(), manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+        Some(Fake {
+            os: Os::MacOs,
+            events,
+            sent: Rc::default(),
+            manage: true,
+            pictures: Rc::default(),
+            asked: Vec::new(),
+            clock: Rc::new(Cell::new(NOW)),
+        });
     let mut host = OsMotion(reduce);
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 500.0)).with_step_dt(1.0 / 60.0).with_max_steps(120).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {

@@ -112,7 +112,7 @@ impl LauncherUi {
         let t = Tokens::get(ui.ctx());
         ui.set_width(480.0f32.min(ui.ctx().content_rect().width() - 80.0));
         let title = fmt(tl!("Eternal Craft Launcher {version} is available."), &[("version", &r.version_label())]);
-        Self::title(ui, Some(crate::icons::artcraft_mark()), &title, "");
+        Self::title(ui, Some(crate::icons::mark()), &title, "");
         ui.label(RichText::new(tl!("A new version is available. Would you like to relaunch with the updated version?")).color(t.muted));
         ui.add_space(14.0);
         let mut close = false;
@@ -186,7 +186,7 @@ impl LauncherUi {
         ui.set_max_height((viewport.height() - 80.0).max(0.0));
         ui.spacing_mut().scroll = egui::style::ScrollStyle { foreground_color: true, ..egui::style::ScrollStyle::solid() };
         let title_top = ui.cursor().top();
-        Self::title(ui, Some(crate::icons::artcraft_mark()), tl!("Settings"), &format!("Eternal Craft Launcher {}", env!("CARGO_PKG_VERSION")));
+        Self::title(ui, Some(crate::icons::mark()), tl!("Settings"), &format!("Eternal Craft Launcher {}", env!("CARGO_PKG_VERSION")));
         let title_height = ui.cursor().top() - title_top;
         let quit_width = widgets::button_width(ui, tl!("Quit Eternal Craft Launcher"), 0.0);
         let done_width = widgets::button_width(ui, tl!("Done"), 90.0);
@@ -311,6 +311,24 @@ impl LauncherUi {
                     // is only ever on offer there (as the fallback when the host has no Flatpak).
                     if is_flatpak {
                         ui.selectable_value(&mut choice, Some(PackageKind::TarGz), crate::i18n::t(PackageKind::TarGz.label()));
+                    }
+                });
+            });
+            self.settings.preferred_kinds = choice.into_iter().collect();
+            ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
+        }
+
+        // Fork: Windows has a choice too, between the portable zip and the installer. Upstream only
+        // offers a picker on Linux; here the portable zip is the default, matching
+        // `install::available_kinds()`, which puts it first.
+        if self.caps.manage_apps && self.platform.is_some_and(|p| p.os == Os::Windows) {
+            section(ui, &fmt(tl!("Installing for {platform}"), &[("platform", &Os::Windows.label())]));
+            let mut choice = self.settings.preferred_kinds.first().copied().or(Some(PackageKind::PortableZip));
+            row(ui, tl!("Install new apps as"), 210.0, &mut |ui| {
+                let label = crate::i18n::t(choice.unwrap_or(PackageKind::PortableZip).label());
+                egui::ComboBox::from_id_salt("win-kind").selected_text(label).width(210.0).show_ui(ui, |ui| {
+                    for k in [PackageKind::PortableZip, PackageKind::Msi] {
+                        ui.selectable_value(&mut choice, Some(k), crate::i18n::t(k.label()));
                     }
                 });
             });

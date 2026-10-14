@@ -104,7 +104,9 @@ pub struct Settings {
     /// Show a system notification when an installed app has an update.
     pub notify: bool,
     pub prereleases: bool,
-    /// Linux: the package format to prefer for new installs (empty: the system's own).
+    /// The package format to prefer for new installs (empty: the platform's own). Upstream only
+    /// offers this on Linux; the fork's Settings shows it on Windows too, between the portable zip
+    /// and the installer.
     pub preferred_kinds: Vec<PackageKind>,
     /// Announcements and alerts from the release feed the user dismissed (by notice id).
     pub dismissed_notices: std::collections::BTreeSet<String>,

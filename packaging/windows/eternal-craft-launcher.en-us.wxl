@@ -2,7 +2,7 @@
 <!--
   Overrides for the setup wizard's WixUI strings, so its pages name the version being installed
   ([ArtCraftLauncherVersion] is the full version, pre-release tag included, set in
-  artcraft-launcher.wxs) and say what the launcher is for.
+  eternal-craft-launcher.wxs) and say what the launcher is for.
 -->
 <WixLocalization Culture="en-US" xmlns="http://wixtoolset.org/schemas/v4/wxl">
   <String Id="WelcomeDlgTitle" Value="{\WixUI_Font_Bigger}Welcome to [ProductName] [ArtCraftLauncherVersion]" />

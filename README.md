@@ -328,14 +328,13 @@ with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md).
 The app icons of the Craft apps (`assets/app-icons/`) are each app's own icon, copied unmodified
 from its repository and licensed like that app (MIT OR Apache-2.0).
 
-**The ArtCraft name, logo and "A" mark are not licensed under MIT or Apache-2.0.** They (everything
-in [`docs/brand/`](docs/brand/), plus the app icon in [`assets/app-icon/`](assets/app-icon/), the
-logo in the launcher's header and the "A" tray icon)
-are trademarks of the ArtCraft Team and are not covered by this license. They may be used only unmodified, and only as
-part of this repository and ArtCraft Launcher, under [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt).
-Forks and modified versions must remove them.
+**The ArtCraft name, wordmark and "A" mark are not licensed under MIT or Apache-2.0.** They are
+trademarks of the ArtCraft Team, and this fork does not use them: its own mark and wordmark
+(`docs/brand/eternal-*`, `assets/app-icon/`) are EternalShade3D's and fall under the license above.
+The upstream terms are in [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt), which says
+forks must remove or replace the ArtCraft Marks.
 
 <p align="center">
-  <a href="https://getartcraft.com/"><img alt="ArtCraft" src="docs/brand/artcraft-mark.svg" width="28"></a><br>
-  <sub>Made by the <a href="https://getartcraft.com/">ArtCraft</a> team and community.</sub>
+  <img alt="Eternal Craft Launcher" src="docs/brand/eternal-mark.svg" width="28"><br>
+  <sub>Based on <a href="https://getartcraft.com/">ArtCraft Launcher</a> by the ArtCraft team. This fork is not an ArtCraft product.</sub>
 </p>

@@ -2,14 +2,14 @@
 <defs><clipPath id="panel"><rect width="232" height="400"/></clipPath></defs>
 
 <rect width="660" height="400" fill="#efe9dc"/>
-<g clip-path="url(#panel)"><rect width="232" height="400" fill="#4e7bfb"/><image href="../../../docs/brand/artcraft-mark-black.svg" x="31" y="115" width="170" height="170"/></g>
+<g clip-path="url(#panel)"><rect width="232" height="400" fill="#7149f9"/><image href="../../../docs/brand/eternal-mark-black.svg" x="31" y="115" width="170" height="170"/></g>
 <line x1="232.5" y1="0" x2="232.5" y2="400" stroke="#0b0b0c" stroke-width="1.2"/>
 <line x1="236.5" y1="0" x2="236.5" y2="400" stroke="#0b0b0c" stroke-width="0.5"/>
 
 <line x1="267" y1="88.5" x2="624" y2="88.5" stroke="#0b0b0c" stroke-width="0.6"/>
-<path d="M271.5,81.5 L276,88.5 L271.5,95.5 L267,88.5 Z" fill="#4e7bfb"/>
+<path d="M271.5,81.5 L276,88.5 L271.5,95.5 L267,88.5 Z" fill="#7149f9"/>
 
-<rect x="410.5" y="199.5" width="11" height="11" fill="#efe9dc" stroke="#0b0b0c" stroke-opacity="0.45" stroke-width="0.7"/><rect x="425.5" y="199.5" width="11" height="11" fill="#efe9dc" stroke="#0b0b0c" stroke-opacity="0.45" stroke-width="0.7"/><rect x="440.5" y="199.5" width="11" height="11" fill="#efe9dc" stroke="#0b0b0c" stroke-opacity="0.45" stroke-width="0.7"/><rect x="455.5" y="199.5" width="11" height="11" fill="#4e7bfb" stroke="#0b0b0c" stroke-width="0.7"/><line x1="472" y1="205" x2="484" y2="205" stroke="#0b0b0c" stroke-width="1.2"/><path d="M495,205 L484,210.5 L484,199.5 Z" fill="#0b0b0c"/>
+<rect x="410.5" y="199.5" width="11" height="11" fill="#efe9dc" stroke="#0b0b0c" stroke-opacity="0.45" stroke-width="0.7"/><rect x="425.5" y="199.5" width="11" height="11" fill="#efe9dc" stroke="#0b0b0c" stroke-opacity="0.45" stroke-width="0.7"/><rect x="440.5" y="199.5" width="11" height="11" fill="#efe9dc" stroke="#0b0b0c" stroke-opacity="0.45" stroke-width="0.7"/><rect x="455.5" y="199.5" width="11" height="11" fill="#7149f9" stroke="#0b0b0c" stroke-width="0.7"/><line x1="472" y1="205" x2="484" y2="205" stroke="#0b0b0c" stroke-width="1.2"/><path d="M495,205 L484,210.5 L484,199.5 Z" fill="#0b0b0c"/>
 <line x1="267" y1="335.5" x2="624" y2="335.5" stroke="#0b0b0c" stroke-width="0.6"/>
 
 

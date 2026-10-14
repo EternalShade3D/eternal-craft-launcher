@@ -1,8 +1,8 @@
-ArtCraft Launcher app icon (every file in this directory)
+Eternal Craft Launcher app icon (every file in this directory)
 
-These files are the ArtCraft "A" mark (docs/brand/artcraft-mark-black.svg), rendered unmodified by
-packaging/icons.sh. The mark is a trademark of the ArtCraft Team. It is NOT open source and is NOT
-covered by ArtCraft Launcher's MIT or Apache-2.0 license.
+These files are the fork's own mark (docs/brand/eternal-mark.svg), drawn by EternalShade3D and
+rendered by packaging/icons.sh. It is not the ArtCraft "A" mark, which forks must remove under
+docs/brand/LICENSE-brand.txt.
 
-Its terms are in docs/brand/LICENSE-brand.txt. In short: it may be used only unmodified, only as
-part of this repository and ArtCraft Launcher, and forks and modified versions must remove it.
+Licensed under the same terms as the code: MIT or Apache-2.0, at your option.
+Copyright (c) EternalShade3D.

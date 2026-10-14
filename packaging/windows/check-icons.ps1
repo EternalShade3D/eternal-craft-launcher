@@ -10,7 +10,7 @@
   carries the app's AppUserModelID (toast notifications need it).
 #>
 param(
-  [string] $WxsPath = (Join-Path $PSScriptRoot 'artcraft-launcher.wxs')
+  [string] $WxsPath = (Join-Path $PSScriptRoot 'eternal-craft-launcher.wxs')
 )
 $ErrorActionPreference = 'Stop'
 $AppId = 'ai.storyteller.artcraft-launcher'
