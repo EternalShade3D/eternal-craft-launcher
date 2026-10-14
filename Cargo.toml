@@ -34,6 +34,9 @@ opt-level = 2
 
 [profile.dev]
 opt-level = 1
+# No debuginfo: on Windows the linker writes a .pdb per test binary, and the suite is 32 binaries,
+# so the debug target dir grew to 14 GB on disk. Tests and stack traces still work.
+debug = 0
 
 [profile.release]
 lto = "thin"
