@@ -94,7 +94,7 @@
 	Install new apps as	新しいアプリのインストール形式
 	Install folder	インストールフォルダー
 	Choose	選択
-	New installs go here. Apps already installed keep the folder they are in.	新しいインストールはここに置かれます。すでにインストール済みのアプリは現在のフォルダーのままです。
+	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	新しいインストールはここに置かれます。ここで見つかったアプリがランチャーが使用するものです。よそで見つかるアプリは現在のフォルダーのままです。
 	System package (recommended)	システムパッケージ（推奨）
 	Updates always use the format an app was installed with.	更新は常に、アプリをインストールしたときの形式で行われます。
 	Running in the background	バックグラウンドで実行

@@ -185,17 +185,26 @@ impl NativeBackend {
             let snapshot = crate::detect::Snapshot::take();
             let manifest = shared.manifest.lock().unwrap_or_else(PoisonError::into_inner).clone();
             for app in &SUITE {
-                let found = crate::detect::detect(app, &manifest, &snapshot);
-                // Fork: a portable folder the user put in the apps folder by hand has no record, and
-                // Windows detection is the installer registry alone, so it showed nothing. Adopt it
-                // and keep it: the record is what makes the app known from then on.
-                let found = match &found {
-                    Some(i) => Some(i.clone()),
-                    None => crate::detect::scan(app, &paths.apps()).map(|scanned| {
+                // Fork: the folder Settings points at is looked in first. A user can have the app in
+                // Program Files and a portable copy on a drive at the same time, and the folder they
+                // picked is the one they want the launcher to use. Windows detection on its own is
+                // the installer registry, which is why a portable copy on a drive showed nothing.
+                // Fork: the folder Settings points at is looked in first. A user can have the app in
+                // Program Files and a portable copy on a drive at the same time, and the folder they
+                // picked is the one they want the launcher to use. Windows detection on its own is
+                // the installer registry, which is why a portable copy on a drive showed nothing.
+                let scanned = crate::detect::scan(app, &paths.apps());
+                let found = crate::detect::pick(scanned.clone(), crate::detect::detect(app, &manifest, &snapshot));
+                // Only a copy found in the picked folder is recorded here: a record or an installer
+                // entry is already known. Written once, when the record doesn't point at this copy,
+                // so a refresh doesn't rewrite it every time.
+                if let Some(scanned) = &scanned {
+                    let path = std::path::PathBuf::from(&scanned.location);
+                    if manifest.apps.get(app.id).map(|r| r.path.clone()) != Some(path.clone()) {
                         let record = crate::manifest::Record {
                             version: scanned.version.as_ref().map_or_else(String::new, |v| v.to_string()),
                             kind: PackageKind::PortableZip,
-                            path: std::path::PathBuf::from(&scanned.location),
+                            path,
                             installed_at: crate::now(),
                             files: Vec::new(),
                             needs_root: false,
@@ -203,11 +212,10 @@ impl NativeBackend {
                         let mut m = shared.manifest.lock().unwrap_or_else(PoisonError::into_inner);
                         m.apps.insert(app.id.to_string(), record);
                         if let Err(e) = m.save(&paths.manifest()) {
-                            log::warn!("{}: found in the apps folder but couldn't be recorded ({e})", app.id);
+                            log::warn!("{}: found in the picked folder but couldn't be recorded ({e})", app.id);
                         }
-                        scanned
-                    }),
-                };
+                    }
+                }
                 {
                     let mut map = shared.installed.lock().unwrap_or_else(PoisonError::into_inner);
                     match &found {

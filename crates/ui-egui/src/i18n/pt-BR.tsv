@@ -80,7 +80,7 @@
 	Install new apps as	Instalar novos aplicativos como
 	Install folder	Pasta de instalação
 	Choose	Escolher
-	New installs go here. Apps already installed keep the folder they are in.	As novas instalações vão para aqui. Os aplicativos já instalados ficam na pasta onde estão.
+	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	As novas instalações vão para aqui. Os aplicativos encontrados aqui são os que o launcher usa. Os aplicativos encontrados só em outro lugar ficam na pasta onde estão.
 	System package (recommended)	Pacote do sistema (recomendado)
 	Updates always use the format an app was installed with.	As atualizações sempre usam o formato com o qual o aplicativo foi instalado.
 	Running in the background	Execução em segundo plano

@@ -79,7 +79,7 @@
 	Install new apps as	Instalovat nové aplikace jako
 	Install folder	Složka pro instalaci
 	Choose	Vybrat
-	New installs go here. Apps already installed keep the folder they are in.	Nové instalace jdou sem. Již nainstalované aplikace zůstanou ve své složce.
+	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	Nové instalace jdou sem. Aplikace nalezené tady launcher používá. Aplikace nalezené jen jinde zůstanou ve své složce.
 	System package (recommended)	Systémový balíček (doporučeno)
 	Updates always use the format an app was installed with.	Aktualizace vždy použijí formát, ve kterém byla aplikace nainstalována.
 	Running in the background	Běh na pozadí

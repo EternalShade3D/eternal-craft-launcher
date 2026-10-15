@@ -90,7 +90,7 @@
 	Install new apps as	Устанавливать новые приложения как
 	Install folder	Папка установки
 	Choose	Выбрать
-	New installs go here. Apps already installed keep the folder they are in.	Новые установки попадают сюда. Уже установленные приложения остаются в своей папке.
+	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	Новые установки попадают сюда. Лаунчер использует приложения, найденные здесь. Приложения, найденные только в другом месте, остаются в своей папке.
 	System package (recommended)	Системный пакет (рек.)
 	Updates always use the format an app was installed with.	Обновления всегда используют формат, с которым приложение было установлено.
 	Running in the background	Работа в фоне

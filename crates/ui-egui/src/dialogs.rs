@@ -339,7 +339,7 @@ impl LauncherUi {
                 });
                 self.settings.install_dir = picked;
             });
-            ui.label(RichText::new(tl!("New installs go here. Apps already installed keep the folder they are in.")).size(12.0).color(t.muted));
+            ui.label(RichText::new(tl!("New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.")).size(12.0).color(t.muted));
         }
 
         // Fork: Windows has a choice too, between the portable zip and the installer. Upstream only

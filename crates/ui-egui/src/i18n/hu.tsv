@@ -92,7 +92,7 @@
 	Install new apps as	Új alkalmazások csomagformátuma
 	Install folder	Telepítési mappa
 	Choose	Kiválasztás
-	New installs go here. Apps already installed keep the folder they are in.	Az új telepítések ide kerülnek. A már telepített alkalmazások a saját mappájukban maradnak.
+	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	Az új telepítések ide kerülnek. A launcher a itt megtalált alkalmazásokat használja. A csak máshol megtalált alkalmazások a saját mappájukban maradnak.
 	System package (recommended)	Rendszercsomag (ajánlott)
 	Updates always use the format an app was installed with.	A frissítések mindig az eredeti telepítés csomagformátumát használják.
 	Running in the background	Futtatás a háttérben

@@ -107,6 +107,14 @@ pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
     found.into_iter().next()
 }
 
+/// Fork: which copy the launcher reports when the same app exists in more than one place. The
+/// folder Settings points at is what the user asked for, so a copy found there wins over a record
+/// or an installer registry entry. Without a picked folder the usual order stands: the launcher's
+/// own record, then the system.
+pub fn pick(picked: Option<Installed>, other: Option<Installed>) -> Option<Installed> {
+    picked.or(other)
+}
+
 /// Whether a file name is an AppImage of the app with asset stems `stems`, and the version its
 /// name gives. Matches only the names a release AppImage ends up with: the release's own
 /// (`photocraft-0.6.0-linux-x86_64.AppImage`) and the bare app name Gear Lever renames it to
@@ -711,5 +719,25 @@ mod fork_tests {
         }
         let found = scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap();
         assert_eq!(found.version.as_ref().map(|v| v.to_string()).unwrap(), "0.7.1");
+    }
+
+    #[test]
+    fn a_copy_in_the_folder_settings_points_at_wins_over_the_record() {
+        let picked = Installed {
+            version: version::parse("0.7.1"),
+            source: InstallSource::Launcher,
+            location: "E:\\Suite\\APPS\\PHOTOCRAFT\\photocraft-0.7.1\\photocraft.exe".to_string(),
+            package: None,
+        };
+        let msi = Installed {
+            version: version::parse("0.6.2"),
+            source: InstallSource::Msi,
+            location: "C:\\Program Files\\Photocraft\\photocraft.exe".to_string(),
+            package: Some("photocraft".to_string()),
+        };
+        // Both exist on disk at once: the folder the user picked is the one the launcher uses.
+        assert_eq!(pick(Some(picked.clone()), Some(msi.clone())).unwrap(), picked);
+        // Nothing in that folder: the record and the installer registry still stand.
+        assert_eq!(pick(None, Some(msi.clone())).unwrap(), msi);
     }
 }
