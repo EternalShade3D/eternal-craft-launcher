@@ -20,7 +20,7 @@ release zip over the app's own folder.
 | 6 | `apps()` uses the folder picked in Settings, else an `APPS` folder beside the launcher | `crates/native/src/paths.rs` |
 | 7 | New dependencies: `zip` 9 (deflate only), `rfd` 0.17 for the folder dialog (desktop only) | `crates/native/Cargo.toml`, `crates/ui-egui/Cargo.toml` |
 | 8 | Settings shows the format picker on Windows too, and a row for the install folder | `crates/ui-egui/src/settings.rs`, `crates/ui-egui/src/dialogs.rs` |
-| 9 | Detection adopts a portable folder the user put there by hand, and keeps it | `crates/native/src/detect.rs` `scan()` |
+| 9 | The picked folder is looked in first, and a portable folder the user put there by hand is adopted and kept | `crates/native/src/detect.rs` `scan()`, `pick()` |
 | 10 | The launcher's own name, publisher and registry keys are the fork's | `crates/core/src/catalog.rs`, `apps/artcraft-launcher/build.rs`, `crates/native/src/detect.rs`, `crates/native/src/self_update.rs` |
 | 11 | Self-update reads this fork's releases, not upstream's | `crates/native/src/self_update.rs` |
 | 12 | Tests: 4 native + 2 UI | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs` |

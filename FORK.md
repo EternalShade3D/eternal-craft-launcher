@@ -19,7 +19,7 @@ Branch: `main` (one branch, portable only)
 | 4 | `uninstall()` gains a Windows arm for a launcher-owned portable install | `crates/native/src/install.rs` |
 | 5 | New `windows::remove_zip()` — takes out only the version folder the launcher unpacked | `crates/native/src/install.rs` |
 | 6 | `apps()` uses the folder picked in Settings, else an `APPS` folder beside the launcher | `crates/native/src/paths.rs` |
-| 7 | Detection adopts a portable folder the user put there by hand, and keeps it | `crates/native/src/detect.rs` `scan()` |
+| 7 | The picked folder is looked in first, and a portable folder the user put there by hand is adopted and kept | `crates/native/src/detect.rs` `scan()`, `pick()` |
 | 8 | Settings shows the install-format picker on Windows too, and an install folder row on every platform | `crates/ui-egui/src/settings.rs`, `crates/ui-egui/src/dialogs.rs` |
 | 9 | The launcher's own name, publisher and registry keys are the fork's | `crates/core/src/catalog.rs`, `apps/artcraft-launcher/build.rs`, `crates/native/src/detect.rs`, `crates/native/src/self_update.rs` |
 | 10 | Self-update reads this fork's releases, not upstream's | `crates/native/src/self_update.rs` |
@@ -100,8 +100,15 @@ desktop only; the web build shows the field alone). It applies to new installs. 
 
 Windows detection is the installer registry alone, so a portable folder copied onto a drive showed
 nothing: no record, no MSI entry. `detect::scan()` reads the apps folder (the uppercase app folder,
-a flat lowercase one too), takes the version from the folder name, and the backend records what it
-finds. That is what makes an app the launcher never installed show up and become updatable.
+a flat lowercase one, and version folders sitting directly under the apps folder), takes the version
+from the folder name, and the backend records what it finds. That is what makes an app the launcher
+never installed show up and become updatable.
+
+`detect::pick()` decides which copy is reported when the same app exists in more than one place: a
+user can have an installer install in Program Files and a portable copy on a drive at the same time,
+and the folder Settings points at is the one they asked for, so a copy found there wins. Without a
+picked folder the usual order stands, the launcher's own record then the system. The newest copy of
+an app wins when a folder holds more than one, because the filesystem lists entries in any order.
 
 
 ## Build from source
