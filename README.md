@@ -1,10 +1,13 @@
 # Eternal Craft Launcher
 
-**Our fork of [ArtCraft Launcher](https://github.com/storytold/craft-launcher), made for a fully
-portable suite: no installs, no `C:\Program Files`.**
+**Our fork of [ArtCraft Launcher](https://github.com/storytold/craft-launcher), built around the
+portable zip instead of Windows Installer.** New installs unpack into a folder you choose, and
+updates land in that same folder. Windows Installer is still there if you want it, and an app
+installed through it is still found.
 
-It opens the Craft apps from wherever they already are on disk, and updates them by unpacking the
-release zip over the app's own folder.
+Download the zip, unzip it, run `eternal-craft-launcher.exe`. Settings has a row for where new
+installs go. Apps you put in that folder by hand are picked up as well, and that folder is the one
+the launcher uses when the same app also exists somewhere else.
 
 ---
 

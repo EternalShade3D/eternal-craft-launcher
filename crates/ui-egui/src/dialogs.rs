@@ -326,17 +326,28 @@ impl LauncherUi {
         // including a drive the launcher itself is not on. `paths::apps()` honours this on every
         // platform, so the row is not a Windows-only one.
         if self.caps.manage_apps {
-            row(ui, tl!("Install folder"), 210.0, &mut |ui| {
-                let mut picked = self.settings.install_dir.clone();
-                ui.horizontal(|ui| {
-                    ui.add(egui::TextEdit::singleline(&mut picked).desired_width(150.0).min_size(vec2(0.0, theme::CONTROL_H)));
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if widgets::button(ui, tl!("Choose"), Kind::Secondary, 0.0).clicked()
-                        && let Some(dir) = rfd::FileDialog::new().pick_folder()
-                    {
-                        picked = dir.display().to_string();
-                    }
-                });
+            // Fork: where new installs go. Upstream always unpacks into the launcher's own folder, so a
+            // portable suite had to be next to the launcher. Here the user can point it anywhere,
+            // including a drive the launcher itself is not on. `paths::apps()` honours this on every
+            // platform, so the row is not a Windows-only one.
+            // A path is long, so this one is not a label-and-control row: the label gets its own line
+            // and the field takes all the width left after the button, which is what lets a folder on
+            // another drive be read instead of cut off.
+            ui.label(tl!("Install folder"));
+            let mut picked = self.settings.install_dir.clone();
+            #[cfg(not(target_arch = "wasm32"))]
+            let choose_width = widgets::button_width(ui, tl!("Choose"), 0.0) + ui.spacing().item_spacing.x;
+            #[cfg(target_arch = "wasm32")]
+            let choose_width = 0.0;
+            let field_width = (ui.available_width() - choose_width).max(140.0);
+            ui.horizontal(|ui| {
+                ui.add(egui::TextEdit::singleline(&mut picked).desired_width(field_width).min_size(vec2(0.0, theme::CONTROL_H)));
+                #[cfg(not(target_arch = "wasm32"))]
+                if widgets::button(ui, tl!("Choose"), Kind::Secondary, 0.0).clicked()
+                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                {
+                    picked = dir.display().to_string();
+                }
                 self.settings.install_dir = picked;
             });
             ui.label(RichText::new(tl!("New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.")).size(12.0).color(t.muted));

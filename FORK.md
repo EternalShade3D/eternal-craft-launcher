@@ -1,10 +1,13 @@
 # Eternal Craft Launcher
 
-Fork of [storytold/craft-launcher](https://github.com/storytold/craft-launcher), changed only so
-the launcher works with **portable installs** instead of installing apps into `C:\Program Files`.
+Fork of [storytold/craft-launcher](https://github.com/storytold/craft-launcher), changed so the launcher
+works with **portable installs** as the default: new installs unpack into a folder you pick in
+Settings, and apps you put in that folder by hand are picked up too. Windows Installer is still
+available and its installs are still found.
 
-Nothing else is touched: same UI, same release feed, same SHA-256 verification, same single-instance
-lock, same self-update.
+The fork carries its own name, wordmark, data folder and release feed, and adds a Settings row for
+the install folder. SHA-256 verification, the single-instance lock and the i18n catalogs are
+upstream's.
 
 Upstream: https://github.com/storytold/craft-launcher
 Branch: `main` (one branch, portable only)
