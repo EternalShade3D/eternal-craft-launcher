@@ -24,7 +24,9 @@ Branch: `main` (one branch, portable only)
 | 9 | The launcher's own name, publisher and registry keys are the fork's | `crates/core/src/catalog.rs`, `apps/artcraft-launcher/build.rs`, `crates/native/src/detect.rs`, `crates/native/src/self_update.rs` |
 | 10 | Self-update reads this fork's releases, not upstream's | `crates/native/src/self_update.rs` |
 | 11 | New dependencies: `zip` 9 (deflate only), `rfd` 0.17 for the folder dialog (desktop only) | `crates/native/Cargo.toml`, `crates/ui-egui/Cargo.toml` |
-| 12 | Tests: 4 native + 2 UI | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs` |
+| 12 | The settings file goes inside the portable folder, so a suite on a stick keeps its settings on another computer | `apps/artcraft-launcher/src/settings_file.rs`, `apps/artcraft-launcher/src/main.rs` |
+| 13 | Tests: 4 native + 2 UI + 1 app | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs`, `apps/artcraft-launcher/src/settings_file.rs` |
+| 13 | Tests: 4 native + 2 UI + 1 app | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs`, `apps/artcraft-launcher/src/settings_file.rs` |
 
 Diff against upstream: 110 files, +1371 / -476 (code only: 64 files, +1023 / -359).
 

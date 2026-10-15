@@ -152,7 +152,17 @@ fn native_options(hidden: bool) -> eframe::NativeOptions {
     } else if let Some(icon) = icon {
         viewport = viewport.with_icon(icon);
     }
-    eframe::NativeOptions { viewport, persist_window: true, wgpu_options: wgpu_options(), ..Default::default() }
+    // Fork: eframe picks its storage folder from the app id, which is in the user's profile and
+    // stays there. A portable suite on a stick carries its records but would lose its settings on
+    // another computer, so persistence is pointed at the same file `settings_file` uses: beside the
+    // exe in portable mode, eframe's folder otherwise.
+    eframe::NativeOptions {
+        viewport,
+        persist_window: true,
+        persistence_path: settings_file::path(APP_ID),
+        wgpu_options: wgpu_options(),
+        ..Default::default()
+    }
 }
 
 /// wgpu's backend list. On Windows that is Direct3D 12 with GL as the fallback, not Vulkan:
