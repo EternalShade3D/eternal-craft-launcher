@@ -112,7 +112,7 @@ function New-InstallerArt([string] $BannerOut, [string] $DialogOut) {
   $line = [System.Drawing.Color]::FromArgb(38, 242, 241, 238)
   # The Craft App Suite, in the launcher's order (crates/core/src/catalog.rs).
   $apps = 'photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft', 'effectcraft',
-    'designcraft', 'wordcraft', 'deckcraft', 'gridcraft', 'cadcraft', 'soundcraft'
+    'designcraft', 'wordcraft', 'deckcraft', 'gridcraft', 'cadcraft', 'soundcraft', 'figcraft'
   $mark = [System.Drawing.Image]::FromFile((Join-Path $Root 'assets\app-icon\hicolor\256x256\apps\ai.storyteller.artcraft-launcher.png'))
   $wordmark = [System.Drawing.Image]::FromFile((Join-Path $Root 'docs\brand\eternal-wordmark-white.png'))
   $icons = $apps | ForEach-Object { [System.Drawing.Image]::FromFile((Join-Path $Root "assets\app-icons\$_.png")) }
@@ -149,14 +149,14 @@ function New-InstallerArt([string] $BannerOut, [string] $DialogOut) {
             $x += $g.MeasureString([string]$ch, $labelFont, 100, [System.Drawing.StringFormat]::GenericTypographic).Width + 1.35
           }
           $brush.Dispose()
-          # The apps, three to a row, in 40 px cells divided by hairlines.
+          # The apps, three to a row, in 36 px cells divided by hairlines (five rows fit above 312).
           $pen = New-Object System.Drawing.Pen $line, 1
-          $left = 22; $top = 126; $cell = 40
+          $left = 22; $top = 118; $cell = 36
           for ($i = 0; $i -lt $icons.Count; $i++) {
             $cx = $left + ($i % 3) * $cell
             $cy = $top + [math]::Floor($i / 3) * $cell
             $g.DrawRectangle($pen, $cx, $cy, $cell, $cell)
-            $g.DrawImage($icons[$i], $cx + 6, $cy + 6, $cell - 12, $cell - 12)
+            $g.DrawImage($icons[$i], $cx + 5, $cy + 5, $cell - 10, $cell - 10)
           }
           $pen.Dispose()
         }

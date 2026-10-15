@@ -2,7 +2,7 @@
 
 Eternal Craft Launcher installs, updates and launches the **Craft App Suite** (PhotoCraft, LightCraft,
 FilmCraft, DesignCraft, VectorCraft, PdfCraft, EffectCraft, WordCraft, DeckCraft, GridCraft,
-CADCraft, SoundCraft). It is written in **Rust only** (no JavaScript or TypeScript): the desktop
+CADCraft, SoundCraft, FigCraft). It is written in **Rust only** (no JavaScript or TypeScript): the desktop
 app is native egui/eframe, and the web build is the same Rust compiled to WebAssembly (trunk +
 wasm-bindgen). **No Tauri, Electron or webview shells**, ever.
 

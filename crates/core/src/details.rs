@@ -67,7 +67,7 @@ pub fn looks_like_jpeg(bytes: &[u8]) -> bool {
 /// Where every Craft App runs (getartcraft.com lists the same for each of them).
 const PLATFORMS: &str = "macOS, Windows, Linux, FreeBSD, web";
 
-pub const DETAILS: [AppDetails; 12] = [
+pub const DETAILS: [AppDetails; 13] = [
     AppDetails {
         id: "photocraft",
         headline: "The image editor you already know how to use.",
@@ -369,6 +369,37 @@ pub const DETAILS: [AppDetails; 12] = [
             shot("automation", "Automation and memory locations"),
             shot("score", "The Score Editor"),
         ],
+        platforms: PLATFORMS,
+    },
+    AppDetails {
+        id: "figcraft",
+        headline: "Interface design and prototyping, in pure Rust.",
+        about: "Design screens, components and prototypes in a native app that opens instantly and works offline, \
+                with no account and no telemetry. Early alpha.",
+        features: &[
+            feature(
+                "Auto layout",
+                "Rows, columns, wrap and grids with padding, gaps and Hug, Fill or Fixed sizing, plus constraints and layout grids.",
+            ),
+            feature(
+                "Components",
+                "Instances with overrides, variants and properties, styles, and variables with modes bound to fills, strokes and effects.",
+            ),
+            feature("Vectors", "Real vector networks, the pen and pencil, the shape builder, editable booleans and variable width strokes."),
+            feature(
+                "Prototypes",
+                "Connections, triggers and animated transitions, variables with conditionals, flows and a presentation view with device frames.",
+            ),
+            feature(
+                "Hand off",
+                "Inspect mode with measurements, annotations, ready-for-dev status, and code for CSS, HTML, React, SwiftUI and Compose.",
+            ),
+            feature(
+                "Your files",
+                "Plain .figcraft files on your own disk. SVG, PNG, JPEG, WebP and PDF in and out, and .fig files open, best effort.",
+            ),
+        ],
+        shots: &[],
         platforms: PLATFORMS,
     },
 ];

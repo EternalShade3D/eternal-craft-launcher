@@ -1,4 +1,4 @@
-//! The Craft App Suite: the twelve apps the launcher knows about.
+//! The Craft App Suite: the thirteen apps the launcher knows about.
 //!
 //! The list is data so a later version can fetch it from an API; [`SUITE`] is the built-in copy.
 //!
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 pub enum AppGroup {
     /// The seven original apps.
     Classic,
-    /// The five apps added after them.
+    /// The six apps added after them.
     New,
 }
 
@@ -94,8 +94,8 @@ const fn app(
     CraftApp { id, name, tagline, group, color, ink_light, ink_dark, repo, former_ids: &[], former_names: &[] }
 }
 
-/// The Craft App Suite, in display order: the seven classic apps, then the five new ones.
-pub const SUITE: [CraftApp; 12] = [
+/// The Craft App Suite, in display order: the seven classic apps, then the six new ones.
+pub const SUITE: [CraftApp; 13] = [
     app(
         "photocraft",
         "PhotoCraft",
@@ -196,6 +196,14 @@ pub const SUITE: [CraftApp; 12] = [
         [[0x1f, 0xa5, 0xc9], [0x0e, 0x72, 0x90], [0x5f, 0xd0, 0xee]],
         "storytold/soundcraft",
     ),
+    app(
+        "figcraft",
+        "FigCraft",
+        "Interface design and prototyping",
+        AppGroup::New,
+        [[0x02, 0xda, 0x96], [0x04, 0x7a, 0x56], [0x4f, 0xe8, 0xb6]],
+        "storytold/figcraft",
+    ),
 ];
 
 /// ArtCraft's website.
@@ -246,9 +254,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn suite_has_seven_classic_and_five_new_apps_with_unique_ids() {
+    fn suite_has_seven_classic_and_six_new_apps_with_unique_ids() {
         assert_eq!(SUITE.iter().filter(|a| a.group == AppGroup::Classic).count(), 7);
-        assert_eq!(SUITE.iter().filter(|a| a.group == AppGroup::New).count(), 5);
+        assert_eq!(SUITE.iter().filter(|a| a.group == AppGroup::New).count(), 6);
         let mut ids: Vec<_> = SUITE.iter().map(|a| a.id).collect();
         ids.sort_unstable();
         ids.dedup();

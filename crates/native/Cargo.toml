@@ -22,6 +22,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 dirs = "6"
+tempfile = "3"
 sha2 = "0.10"
 # HTTPS over rustls, with the OS verifying certificates (rustls-platform-verifier). No bundled
 # root list: webpki-roots and webpki-root-certs are CDLA-licensed.
@@ -42,3 +43,4 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tempfile = "3"
+

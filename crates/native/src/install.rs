@@ -360,22 +360,35 @@ fn prepare_home(home: &Path) {
 /// Moves `staged` into place at `dest`, keeping the old copy until the new one is there.
 #[allow(dead_code)]
 fn swap_into_place(staged: &Path, dest: &Path) -> Result<(), String> {
-    let old = dest.with_extension("old");
-    if old.exists() {
-        let _ = if old.is_dir() { std::fs::remove_dir_all(&old) } else { std::fs::remove_file(&old) };
-    }
-    let had_old = dest.exists();
-    if had_old {
-        std::fs::rename(dest, &old).map_err(|e| format!("couldn't move the old copy aside ({e})"))?;
-    }
-    if let Err(e) = std::fs::rename(staged, dest) {
-        if had_old {
-            let _ = std::fs::rename(&old, dest);
+    swap_into_place_via(staged, dest, |from, to| std::fs::rename(from, to))
+}
+
+fn swap_into_place_via(staged: &Path, dest: &Path, rename: impl Fn(&Path, &Path) -> std::io::Result<()>) -> Result<(), String> {
+    // Reserve a directory of our own beside the destination. A predictable sibling such as
+    // `app.old` may be a user's backup, and must never be removed or overwritten.
+    let backup = if dest.exists() {
+        let parent = dest.parent().ok_or("the installed app has no parent folder")?;
+        let backup = tempfile::Builder::new()
+            .prefix(".artcraft-launcher-backup-")
+            .tempdir_in(parent)
+            .map_err(|e| format!("couldn't create a backup folder in {} ({e})", parent.display()))?;
+        rename(dest, &backup.path().join("old")).map_err(|e| format!("couldn't move the old copy aside ({e})"))?;
+        Some(backup)
+    } else {
+        None
+    };
+    if let Err(e) = rename(staged, dest) {
+        if let Some(backup) = backup
+            && let Err(restore) = rename(&backup.path().join("old"), dest)
+        {
+            // A failed rollback must not let TempDir's cleanup delete the only old copy.
+            let saved = backup.keep().join("old");
+            return Err(format!(
+                "couldn't put the new copy in place ({e}); couldn't restore the old copy ({restore}); it was kept at {}",
+                saved.display()
+            ));
         }
         return Err(format!("couldn't put the new copy in place ({e})"));
-    }
-    if had_old {
-        let _ = if old.is_dir() { std::fs::remove_dir_all(&old) } else { std::fs::remove_file(&old) };
     }
     Ok(())
 }
@@ -752,6 +765,7 @@ pub(crate) mod linux {
             "gridcraft" => include_bytes!("../../../assets/app-icons/gridcraft.png"),
             "cadcraft" => include_bytes!("../../../assets/app-icons/cadcraft.png"),
             "soundcraft" => include_bytes!("../../../assets/app-icons/soundcraft.png"),
+            "figcraft" => include_bytes!("../../../assets/app-icons/figcraft.png"),
             _ => return None,
         })
     }
@@ -1352,9 +1366,86 @@ mod tests {
         swap_into_place(&staged, &dest).unwrap();
         assert_eq!(std::fs::read_to_string(dest.join("v")).unwrap(), "new");
         assert!(!staged.exists() && !dir.path().join("app.old").exists());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
         // A missing staged copy leaves the installed one alone.
         assert!(swap_into_place(&staged, &dest).is_err());
         assert_eq!(std::fs::read_to_string(dest.join("v")).unwrap(), "new");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn swap_preserves_an_unrelated_backup_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("app");
+        let staged = dir.path().join("app.new");
+        let unrelated = dest.with_extension("old");
+        std::fs::write(&dest, b"installed app").unwrap();
+        std::fs::write(&staged, b"updated app").unwrap();
+        std::fs::write(&unrelated, b"user backup").unwrap();
+        swap_into_place(&staged, &dest).unwrap();
+        assert_eq!(std::fs::read(&unrelated).unwrap(), b"user backup");
+        assert_eq!(std::fs::read(&dest).unwrap(), b"updated app");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
+
+    #[test]
+    fn swap_preserves_an_unrelated_backup_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("app");
+        let staged = dir.path().join("app.new");
+        let unrelated = dest.with_extension("old");
+        std::fs::create_dir(&dest).unwrap();
+        std::fs::write(dest.join("v"), b"installed app").unwrap();
+        std::fs::create_dir(&staged).unwrap();
+        std::fs::write(staged.join("v"), b"updated app").unwrap();
+        std::fs::create_dir(&unrelated).unwrap();
+        std::fs::write(unrelated.join("keep.txt"), b"user backup").unwrap();
+        swap_into_place(&staged, &dest).unwrap();
+        assert_eq!(std::fs::read(unrelated.join("keep.txt")).unwrap(), b"user backup");
+        assert_eq!(std::fs::read(dest.join("v")).unwrap(), b"updated app");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn swap_preserves_a_dangling_backup_symlink() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("app");
+        let staged = dir.path().join("app.new");
+        let unrelated = dest.with_extension("old");
+        let target = dir.path().join("missing");
+        std::fs::write(&dest, b"installed app").unwrap();
+        std::fs::write(&staged, b"updated app").unwrap();
+        std::os::unix::fs::symlink(&target, &unrelated).unwrap();
+        swap_into_place(&staged, &dest).unwrap();
+        assert_eq!(std::fs::read_link(&unrelated).unwrap(), target);
+        assert_eq!(std::fs::read(&dest).unwrap(), b"updated app");
+    }
+
+    #[test]
+    fn a_failed_rollback_keeps_the_old_app_and_reports_its_backup_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("app");
+        let staged = dir.path().join("app.new");
+        std::fs::write(&dest, b"installed app").unwrap();
+        std::fs::write(&staged, b"updated app").unwrap();
+        let calls = std::cell::Cell::new(0);
+        let err = swap_into_place_via(&staged, &dest, |from, to| {
+            calls.set(calls.get() + 1);
+            match calls.get() {
+                1 => std::fs::rename(from, to),
+                2 => Err(std::io::Error::other("staged move failed")),
+                _ => Err(std::io::Error::other("restore failed")),
+            }
+        })
+        .unwrap_err();
+        assert_eq!(calls.get(), 3);
+        assert!(err.contains("staged move failed") && err.contains("restore failed"));
+        let backup = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().path()).find(|p| p.is_dir()).unwrap();
+        let saved = backup.join("old");
+        assert_eq!(std::fs::read(&saved).unwrap(), b"installed app");
+        assert!(err.contains(&saved.display().to_string()));
+        assert_eq!(std::fs::read(&staged).unwrap(), b"updated app");
     }
 
     #[test]

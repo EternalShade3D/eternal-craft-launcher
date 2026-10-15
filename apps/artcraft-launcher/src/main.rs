@@ -161,12 +161,19 @@ fn native_options(hidden: bool) -> eframe::NativeOptions {
 /// Adrenalin installer leaves the integrated GPU on the OEM driver) it crashes inside
 /// `amdvlk64.dll` before the first frame. `WGPU_BACKEND` still overrides the default, and then
 /// wgpu picks the adapter itself. Direct3D 12 shaders compile with FXC ([`pin_dx12_compiler`]).
+///
+/// Direct3D 12 presents through DirectComposition rather than straight to the window. The
+/// borderless window's drop shadow moves its client area down a pixel, and a swapchain made from
+/// the window is then stretched over it vertically by the compositor, blurring every horizontal
+/// edge and line of text. `WGPU_DX12_PRESENTATION_SYSTEM` still overrides it.
 #[cfg(windows)]
 fn wgpu_options() -> eframe::WgpuConfiguration {
-    use eframe::wgpu::{Backends, Dx12Compiler, PowerPreference};
+    use eframe::wgpu::{Backends, Dx12Compiler, Dx12SwapchainKind, PowerPreference};
     let mut config = eframe::WgpuConfiguration::default();
     pin_dx12_compiler(&mut config, Dx12Compiler::from_env());
     if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut config.wgpu_setup {
+        setup.instance_descriptor.backend_options.dx12.presentation_system =
+            Dx12SwapchainKind::from_env().unwrap_or(Dx12SwapchainKind::DxgiFromVisual);
         if let Some(backends) = Backends::from_env() {
             setup.instance_descriptor.backends = backends;
         } else {
