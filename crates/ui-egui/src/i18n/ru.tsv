@@ -88,6 +88,9 @@
 	Include pre-releases (betas and release candidates)	Включать предварительные релизы (бета и RC)
 	Installing on Linux	Установка в Linux
 	Install new apps as	Устанавливать новые приложения как
+	Install folder	Папка установки
+	Choose	Выбрать
+	New installs go here. Apps already installed keep the folder they are in.	Новые установки попадают сюда. Уже установленные приложения остаются в своей папке.
 	System package (recommended)	Системный пакет (рек.)
 	Updates always use the format an app was installed with.	Обновления всегда используют формат, с которым приложение было установлено.
 	Running in the background	Работа в фоне

@@ -7,7 +7,7 @@ Nothing else is touched: same UI, same release feed, same SHA-256 verification, 
 lock, same self-update.
 
 Upstream: https://github.com/storytold/craft-launcher
-Branch: `portable-zip-install`
+Branch: `main` (one branch, portable only)
 
 ## What is different from upstream
 
@@ -18,12 +18,15 @@ Branch: `portable-zip-install`
 | 3 | `install()` gains a Windows arm for `PackageKind::PortableZip` that returns a record | `crates/native/src/install.rs` |
 | 4 | `uninstall()` gains a Windows arm for a launcher-owned portable install | `crates/native/src/install.rs` |
 | 5 | New `windows::remove_zip()` — takes out only the version folder the launcher unpacked | `crates/native/src/install.rs` |
-| 6 | `apps()` resolves to an `APPS` folder beside the launcher in portable mode | `crates/native/src/paths.rs` |
-| 7 | New dependency: `zip` 9, read-only features | `crates/native/Cargo.toml` |
-| 8 | Settings shows the install-format picker on Windows too (upstream: Linux only) | `crates/ui-egui/src/settings.rs` |
-| 9 | Tests: 3 native + 1 UI | `crates/native/src/install.rs`, `crates/native/src/detect.rs`, `crates/ui-egui/tests/ui.rs` |
+| 6 | `apps()` uses the folder picked in Settings, else an `APPS` folder beside the launcher | `crates/native/src/paths.rs` |
+| 7 | Detection adopts a portable folder the user put there by hand, and keeps it | `crates/native/src/detect.rs` `scan()` |
+| 8 | Settings shows the install-format picker on Windows too, and an install folder row on every platform | `crates/ui-egui/src/settings.rs`, `crates/ui-egui/src/dialogs.rs` |
+| 9 | The launcher's own name, publisher and registry keys are the fork's | `crates/core/src/catalog.rs`, `apps/artcraft-launcher/build.rs`, `crates/native/src/detect.rs`, `crates/native/src/self_update.rs` |
+| 10 | Self-update reads this fork's releases, not upstream's | `crates/native/src/self_update.rs` |
+| 11 | New dependencies: `zip` 9 (deflate only), `rfd` 0.17 for the folder dialog (desktop only) | `crates/native/Cargo.toml`, `crates/ui-egui/Cargo.toml` |
+| 12 | Tests: 4 native + 2 UI | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs` |
 
-Diff against upstream: 7 files, +510 / -53.
+Diff against upstream: 110 files, +1371 / -476 (code only: 64 files, +1023 / -359).
 
 ### 1. Windows install formats
 
@@ -62,9 +65,9 @@ registry, so no Windows Installer entries and no `App Paths` keys are needed.
 
 ### 3. `apps()`
 
-Upstream unpacks tarball installs into `<data>/apps/<app>`. In portable mode the fork looks for an
-`APPS` folder beside the launcher's own folder first, so the whole suite is one portable tree and
-updates land where the apps already are.
+Upstream unpacks tarball installs into `<data>/apps/<app>`. The fork takes the folder picked in
+Settings first, and in portable mode falls back to an `APPS` folder beside the launcher's own folder,
+so the whole suite is one portable tree and updates land where the apps already are.
 
 ### 4. Detection
 
@@ -82,6 +85,24 @@ The choice is stored in `settings.json` as `preferred_kinds` and reaches the ins
 installed app still keeps its own format: the preference only applies to new installs.
 
 Default on Windows is the portable zip, so nothing changes for anyone who never opens Settings.
+
+### 6. Where installs go
+
+Upstream always unpacks into the launcher's own apps folder, so a portable suite had to sit next
+the launcher. `paths::apps()` now takes the folder picked in Settings first (`install_dir`, empty by
+default), so the launcher can be on one drive and the apps on another.
+
+The row is in Settings on every platform: a text field plus the OS's own folder dialog (`rfd`,
+desktop only; the web build shows the field alone). It applies to new installs. A record already in
+`installed.json` keeps the path it has, so nothing is moved.
+
+### 7. Adopting a folder the user put there by hand
+
+Windows detection is the installer registry alone, so a portable folder copied onto a drive showed
+nothing: no record, no MSI entry. `detect::scan()` reads the apps folder (the uppercase app folder,
+a flat lowercase one too), takes the version from the folder name, and the backend records what it
+finds. That is what makes an app the launcher never installed show up and become updatable.
+
 
 ## Build from source
 

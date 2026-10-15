@@ -23,6 +23,9 @@ log = { workspace = true }
 sys-locale = "0.3"
 # Finding the Simplified Chinese face in a system font collection; egui already uses it.
 skrifa = { version = "0.44", default-features = false, features = ["std"] }
+# Fork: the Settings row that picks the install folder uses the OS's own folder dialog. The web
+# build has no folder dialog, so it is desktop only and the row shows just the text field there.
+rfd = "0.17.2"
 
 [dev-dependencies]
 serde_json = { workspace = true }

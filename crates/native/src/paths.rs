@@ -9,6 +9,9 @@ pub struct Paths {
     pub data: PathBuf,
     /// Saved release answers and in-progress downloads.
     pub cache: PathBuf,
+    /// Fork: the folder the user picked in Settings for new installs. Set by `Command::Configure`;
+    /// `None` means the folder worked out from where the launcher is.
+    pub apps_override: Option<PathBuf>,
 }
 
 const DIR: &str = if cfg!(any(target_os = "macos", target_os = "windows")) { "Eternal Craft Launcher" } else { "eternal-craft-launcher" };
@@ -42,12 +45,13 @@ impl Paths {
         Ok(Self {
             data: moved(&base.join(DIR), &base.join(OLD_DIR)),
             cache: moved(&cache_base.join(DIR), &cache_base.join(OLD_DIR)),
+            apps_override: None,
         })
     }
 
     /// For tests: everything under one folder.
     pub fn under(root: &std::path::Path) -> Self {
-        Self { data: root.join("data"), cache: root.join("cache") }
+        Self { data: root.join("data"), cache: root.join("cache"), apps_override: None }
     }
 
     pub fn downloads(&self) -> PathBuf {
@@ -89,6 +93,9 @@ impl Paths {
     /// whole suite is one portable tree and updates land where the apps already are. It is looked
     /// for beside the launcher's own folder first (the suite root), then inside it.
     pub fn apps(&self) -> PathBuf {
+        if let Some(dir) = &self.apps_override {
+            return dir.clone();
+        }
         let Some(root) = portable_root() else {
             return self.data.join("apps");
         };
@@ -149,5 +156,20 @@ mod tests {
         std::fs::create_dir_all(&old).unwrap();
         assert_eq!(moved(&new, &old), new);
         assert!(old.is_dir());
+    }
+
+    #[test]
+    fn the_folder_picked_in_settings_wins_over_the_launcher_s_own() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut paths = Paths::under(dir.path());
+        // Nothing picked: the folder worked out from where the launcher is, as before.
+        assert_eq!(paths.apps(), dir.path().join("data").join("apps"));
+        // A folder the user picked, anywhere, including another drive.
+        let picked = dir.path().join("MyApps");
+        paths.apps_override = Some(picked.clone());
+        assert_eq!(paths.apps(), picked);
+        // Clearing the row in Settings goes back to the launcher's own folder.
+        paths.apps_override = None;
+        assert_eq!(paths.apps(), dir.path().join("data").join("apps"));
     }
 }

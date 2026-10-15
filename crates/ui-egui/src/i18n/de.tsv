@@ -90,6 +90,9 @@
 	Include pre-releases (betas and release candidates)	Vorabversionen einbeziehen (Betas und Release Candidates)
 	Installing on Linux	Installation unter Linux
 	Install new apps as	Neue Apps installieren als
+	Install folder	Installationsordner
+	Choose	Auswählen
+	New installs go here. Apps already installed keep the folder they are in.	Neue Installationen kommen hierhin. Bereits installierte Apps bleiben in ihrem Ordner.
 	System package (recommended)	Systempaket (empfohlen)
 	Updates always use the format an app was installed with.	Updates verwenden immer das Format, mit dem eine App installiert wurde.
 	Running in the background	Im Hintergrund ausführen

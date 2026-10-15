@@ -186,6 +186,28 @@ impl NativeBackend {
             let manifest = shared.manifest.lock().unwrap_or_else(PoisonError::into_inner).clone();
             for app in &SUITE {
                 let found = crate::detect::detect(app, &manifest, &snapshot);
+                // Fork: a portable folder the user put in the apps folder by hand has no record, and
+                // Windows detection is the installer registry alone, so it showed nothing. Adopt it
+                // and keep it: the record is what makes the app known from then on.
+                let found = match &found {
+                    Some(i) => Some(i.clone()),
+                    None => crate::detect::scan(app, &paths.apps()).map(|scanned| {
+                        let record = crate::manifest::Record {
+                            version: scanned.version.as_ref().map_or_else(String::new, |v| v.to_string()),
+                            kind: PackageKind::PortableZip,
+                            path: std::path::PathBuf::from(&scanned.location),
+                            installed_at: crate::now(),
+                            files: Vec::new(),
+                            needs_root: false,
+                        };
+                        let mut m = shared.manifest.lock().unwrap_or_else(PoisonError::into_inner);
+                        m.apps.insert(app.id.to_string(), record);
+                        if let Err(e) = m.save(&paths.manifest()) {
+                            log::warn!("{}: found in the apps folder but couldn't be recorded ({e})", app.id);
+                        }
+                        scanned
+                    }),
+                };
                 {
                     let mut map = shared.installed.lock().unwrap_or_else(PoisonError::into_inner);
                     match &found {
@@ -944,6 +966,14 @@ impl Backend for NativeBackend {
                 let changed_pre = {
                     let mut o = self.shared.options.lock().unwrap_or_else(PoisonError::into_inner);
                     let changed = o.prereleases != options.prereleases;
+                    // Fork: the folder the user picked in Settings. Empty keeps the launcher's own
+                    // folder, which is what a portable suite uses.
+                    self.paths.apps_override = options
+                        .install_dir
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|d| !d.is_empty())
+                        .map(std::path::PathBuf::from);
                     *o = options;
                     changed
                 };

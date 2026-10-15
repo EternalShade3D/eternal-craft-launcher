@@ -90,6 +90,9 @@
 	Include pre-releases (betas and release candidates)	Előzetes kiadások engedélyezése (béta- és kiadásra jelölt verziók)
 	Installing on Linux	Telepítés Linuxon
 	Install new apps as	Új alkalmazások csomagformátuma
+	Install folder	Telepítési mappa
+	Choose	Kiválasztás
+	New installs go here. Apps already installed keep the folder they are in.	Az új telepítések ide kerülnek. A már telepített alkalmazások a saját mappájukban maradnak.
 	System package (recommended)	Rendszercsomag (ajánlott)
 	Updates always use the format an app was installed with.	A frissítések mindig az eredeti telepítés csomagformátumát használják.
 	Running in the background	Futtatás a háttérben

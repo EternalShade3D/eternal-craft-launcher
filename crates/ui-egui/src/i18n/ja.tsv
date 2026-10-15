@@ -92,6 +92,9 @@
 	Include pre-releases (betas and release candidates)	プレリリース（ベータ版とリリース候補）を含める
 	Installing on Linux	Linux へのインストール
 	Install new apps as	新しいアプリのインストール形式
+	Install folder	インストールフォルダー
+	Choose	選択
+	New installs go here. Apps already installed keep the folder they are in.	新しいインストールはここに置かれます。すでにインストール済みのアプリは現在のフォルダーのままです。
 	System package (recommended)	システムパッケージ（推奨）
 	Updates always use the format an app was installed with.	更新は常に、アプリをインストールしたときの形式で行われます。
 	Running in the background	バックグラウンドで実行

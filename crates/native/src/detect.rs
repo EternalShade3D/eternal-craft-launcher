@@ -70,6 +70,38 @@ fn from_manifest(app: &CraftApp, manifest: &Manifest) -> Option<Installed> {
     })
 }
 
+/// Fork: a portable copy the user put in the apps folder by hand. Upstream only knows what it
+/// installed itself, and on Windows detection is the installer registry alone, so a folder copied
+/// onto a drive showed nothing. This reads the folder and returns what a record needs.
+pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
+    let exe_name = if cfg!(windows) { format!("{}.exe", app.id) } else { app.id.to_string() };
+    // The app folder is uppercase, the way the suite is kept on disk; a flat lowercase one is
+    // accepted too, so a folder the user made by hand is not missed.
+    for home in [apps.join(app.id.to_uppercase()), apps.join(app.id)] {
+        for entry in std::fs::read_dir(&home).ok()? {
+            let entry = entry.ok()?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            let dir = home.join(&name);
+            if !dir.is_dir() {
+                continue;
+            }
+            let exe = dir.join(&exe_name);
+            if !exe.is_file() {
+                continue;
+            }
+            // The version is the folder name the release zip unpacked to (`photocraft-0.6.2-...`).
+            let rest = name.strip_prefix(&format!("{}-", app.id)).unwrap_or(&name);
+            return Some(Installed {
+                version: version::parse(rest.split('-').next().unwrap_or(rest)),
+                source: InstallSource::Launcher,
+                location: exe.display().to_string(),
+                package: None,
+            });
+        }
+    }
+    None
+}
+
 /// Whether a file name is an AppImage of the app with asset stems `stems`, and the version its
 /// name gives. Matches only the names a release AppImage ends up with: the release's own
 /// (`photocraft-0.6.0-linux-x86_64.AppImage`) and the bare app name Gear Lever renames it to
@@ -632,5 +664,27 @@ mod fork_tests {
         assert_eq!(found.source, InstallSource::Launcher);
         assert_eq!(found.location, exe.display().to_string());
         assert!(InstallSource::Launcher.launcher_can_update(), "a portable record can't be updated");
+    }
+
+    #[test]
+    fn a_portable_folder_the_user_made_by_hand_is_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let apps = dir.path().join("APPS");
+        // The way the launcher keeps apps: the uppercase app folder, the version folder inside it.
+        let home = apps.join("PHOTOCRAFT").join("photocraft-0.6.2-windows-x64-portable");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(home.join("photocraft.exe"), "exe").unwrap();
+        let found = scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap();
+        assert_eq!(found.source, InstallSource::Launcher);
+        assert_eq!(found.version.as_ref().map(|v| v.to_string()).unwrap(), "0.6.2");
+        assert_eq!(found.location, home.join("photocraft.exe").display().to_string());
+        // A folder the user made in lowercase is read too.
+        let flat = apps.join("deckcraft").join("deckcraft-0.5.0");
+        std::fs::create_dir_all(&flat).unwrap();
+        std::fs::write(flat.join("deckcraft.exe"), "exe").unwrap();
+        assert_eq!(scan(CraftApp::by_id("deckcraft").unwrap(), &apps).unwrap().version.as_ref().map(|v| v.to_string()).unwrap(), "0.5.0");
+        // A folder with no exe in it is not an install.
+        std::fs::create_dir_all(apps.join("GRIDCRAFT").join("gridcraft-0.5.0")).unwrap();
+        assert_eq!(scan(CraftApp::by_id("gridcraft").unwrap(), &apps), None);
     }
 }

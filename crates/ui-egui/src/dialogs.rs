@@ -321,6 +321,27 @@ impl LauncherUi {
             ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
         }
 
+        // Fork: where new installs go. Upstream always unpacks into the launcher's own folder, so a
+        // portable suite had to be next to the launcher. Here the user can point it anywhere,
+        // including a drive the launcher itself is not on. `paths::apps()` honours this on every
+        // platform, so the row is not a Windows-only one.
+        if self.caps.manage_apps {
+            row(ui, tl!("Install folder"), 210.0, &mut |ui| {
+                let mut picked = self.settings.install_dir.clone();
+                ui.horizontal(|ui| {
+                    ui.add(egui::TextEdit::singleline(&mut picked).desired_width(150.0).min_size(vec2(0.0, theme::CONTROL_H)));
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if widgets::button(ui, tl!("Choose"), Kind::Secondary, 0.0).clicked()
+                        && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                    {
+                        picked = dir.display().to_string();
+                    }
+                });
+                self.settings.install_dir = picked;
+            });
+            ui.label(RichText::new(tl!("New installs go here. Apps already installed keep the folder they are in.")).size(12.0).color(t.muted));
+        }
+
         // Fork: Windows has a choice too, between the portable zip and the installer. Upstream only
         // offers a picker on Linux; here the portable zip is the default, matching
         // `install::available_kinds()`, which puts it first.
@@ -337,6 +358,7 @@ impl LauncherUi {
             });
             self.settings.preferred_kinds = choice.into_iter().collect();
             ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
+
         }
 
         if self.caps.manage_apps {

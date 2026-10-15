@@ -77,6 +77,9 @@
 	Include pre-releases (betas and release candidates)	Zahrnout předběžná vydání (beta verze a kandidáty na vydání)
 	Installing on Linux	Instalace v Linuxu
 	Install new apps as	Instalovat nové aplikace jako
+	Install folder	Složka pro instalaci
+	Choose	Vybrat
+	New installs go here. Apps already installed keep the folder they are in.	Nové instalace jdou sem. Již nainstalované aplikace zůstanou ve své složce.
 	System package (recommended)	Systémový balíček (doporučeno)
 	Updates always use the format an app was installed with.	Aktualizace vždy použijí formát, ve kterém byla aplikace nainstalována.
 	Running in the background	Běh na pozadí

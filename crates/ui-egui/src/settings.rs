@@ -108,6 +108,9 @@ pub struct Settings {
     /// offers this on Linux; the fork's Settings shows it on Windows too, between the portable zip
     /// and the installer.
     pub preferred_kinds: Vec<PackageKind>,
+    /// Fork: where new installs go. Empty: the `APPS` folder beside the launcher. A user can point
+    /// it anywhere, including a drive the launcher itself is not on.
+    pub install_dir: String,
     /// Announcements and alerts from the release feed the user dismissed (by notice id).
     pub dismissed_notices: std::collections::BTreeSet<String>,
     /// Updates already announced, so each version is announced once: app id → version.
@@ -184,6 +187,7 @@ impl Default for Settings {
             notify: true,
             prereleases: false,
             preferred_kinds: default_preferred_kinds(),
+            install_dir: String::new(),
             dismissed_notices: std::collections::BTreeSet::new(),
             notified: BTreeMap::new(),
             last_check: None,

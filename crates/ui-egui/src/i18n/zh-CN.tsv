@@ -72,6 +72,9 @@
 	Include pre-releases (betas and release candidates)	包含预发布版本（测试版和候选版）
 	Installing on Linux	Linux 安装设置
 	Install new apps as	新应用安装格式
+	Install folder	安装文件夹
+	Choose	选择
+	New installs go here. Apps already installed keep the folder they are in.	新安装会放在这里。已经安装的应用保留它们所在的文件夹。
 	System package (recommended)	系统软件包（推荐）
 	Updates always use the format an app was installed with.	更新时始终使用应用原来的安装格式。
 	Running in the background	后台运行

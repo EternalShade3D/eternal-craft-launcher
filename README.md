@@ -13,16 +13,23 @@ release zip over the app's own folder.
 | # | Change | File |
 | --- | --- | --- |
 | 1 | Windows offers the portable zip first, not MSI only | `crates/native/src/install.rs` `available_kinds()` |
-| 2 | New `windows::install_zip()` — unpacks a verified release zip into the launcher's apps folder and records the exe | `crates/native/src/install.rs` |
+| 2 | New `windows::install_zip()` - unpacks a verified release zip into the launcher's apps folder and records the exe | `crates/native/src/install.rs` |
 | 3 | `install()` gains a Windows arm for `PackageKind::PortableZip` | `crates/native/src/install.rs` |
 | 4 | `uninstall()` gains a Windows arm for a launcher-owned portable install | `crates/native/src/install.rs` |
-| 5 | New `windows::remove_zip()` — takes out only the version folder the launcher unpacked | `crates/native/src/install.rs` |
-| 6 | `apps()` resolves to an `APPS` folder beside the launcher in portable mode | `crates/native/src/paths.rs` |
-| 7 | New dependency: `zip` 9, read-only features | `crates/native/Cargo.toml` |
-| 8 | Two tests added | `crates/native/src/install.rs`, `crates/native/src/detect.rs` |
+| 5 | New `windows::remove_zip()` - takes out only the version folder the launcher unpacked | `crates/native/src/install.rs` |
+| 6 | `apps()` uses the folder picked in Settings, else an `APPS` folder beside the launcher | `crates/native/src/paths.rs` |
+| 7 | New dependencies: `zip` 9 (deflate only), `rfd` 0.17 for the folder dialog (desktop only) | `crates/native/Cargo.toml`, `crates/ui-egui/Cargo.toml` |
+| 8 | Settings shows the format picker on Windows too, and a row for the install folder | `crates/ui-egui/src/settings.rs`, `crates/ui-egui/src/dialogs.rs` |
+| 9 | Detection adopts a portable folder the user put there by hand, and keeps it | `crates/native/src/detect.rs` `scan()` |
+| 10 | The launcher's own name, publisher and registry keys are the fork's | `crates/core/src/catalog.rs`, `apps/artcraft-launcher/build.rs`, `crates/native/src/detect.rs`, `crates/native/src/self_update.rs` |
+| 11 | Self-update reads this fork's releases, not upstream's | `crates/native/src/self_update.rs` |
+| 12 | Tests: 4 native + 2 UI | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs` |
 
-Diff against upstream: 5 files, +209 / -2. Everything else is upstream: same UI, same release feed,
-same SHA-256 verification, same single-instance lock, same self-update.
+Diff against upstream: 110 files, +1371 / -476 (code only: 64 files, +1023 / -359).
+
+Unchanged from upstream: the release feed, SHA-256 verification of downloads, the single-instance
+lock, and the whole interface apart from the two Settings rows. Changed: the name and branding, the
+release repository self-update reads, and the install folder.
 
 See [FORK.md](FORK.md) for the full list with the exact code, the behaviour rules and the build note.
 

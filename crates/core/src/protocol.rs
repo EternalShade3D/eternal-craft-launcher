@@ -60,6 +60,9 @@ pub struct BackendOptions {
     pub kinds: Vec<PackageKind>,
     /// Offer pre-releases (`0.6.0-rc.1`) as updates.
     pub prereleases: bool,
+    /// Fork: the folder new installs go to. Empty or `None`: the folder beside the launcher,
+    /// which is what a portable suite uses. Set in Settings on Windows.
+    pub install_dir: Option<String>,
 }
 
 /// The answer to "what's the latest release of this app?".

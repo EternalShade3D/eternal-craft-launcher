@@ -642,6 +642,26 @@ fn settings_can_choose_the_windows_package_format() {
 }
 
 #[test]
+fn settings_can_choose_where_new_installs_go() {
+    let (mut h, sent) = harness_windows(ViewMode::Grid, egui::Theme::Dark, true);
+    h.run_steps(6);
+    h.get_by_label("Settings").click();
+    h.run_steps(4);
+    // The row is on Windows: the folder the user picks with the dialog, or types.
+    h.get_by_label("Install folder");
+    let ui = h.state_mut().as_mut().unwrap();
+    // Nothing picked yet: the launcher's own folder is used.
+    assert_eq!(ui.settings.install_dir, "");
+    ui.settings.install_dir = "E:\\CraftSuite\\MyApps".to_string();
+    h.run_steps(2);
+    // It reaches the backend, which is what makes a new install go there.
+    assert!(
+        sent.borrow().iter().any(|c| matches!(c, Command::Configure(o) if o.install_dir.as_deref() == Some("E:\\CraftSuite\\MyApps"))),
+        "the picked folder never reached the backend"
+    );
+}
+
+#[test]
 fn the_uninstall_prompt_keeps_its_own_size_after_a_taller_dialog() {
     let (mut h, _) = harness(ViewMode::Grid, egui::Theme::Dark, true);
     h.run_steps(6);
