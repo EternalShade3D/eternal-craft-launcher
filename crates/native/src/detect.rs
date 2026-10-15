@@ -75,13 +75,14 @@ fn from_manifest(app: &CraftApp, manifest: &Manifest) -> Option<Installed> {
 /// onto a drive showed nothing. This reads the folder and returns what a record needs.
 pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
     let exe_name = if cfg!(windows) { format!("{}.exe", app.id) } else { app.id.to_string() };
-    // The app folder is uppercase, the way the suite is kept on disk; a flat lowercase one is
-    // accepted too, so a folder the user made by hand is not missed.
-    for home in [apps.join(app.id.to_uppercase()), apps.join(app.id)] {
-        for entry in std::fs::read_dir(&home).ok()? {
-            let entry = entry.ok()?;
-            let name = entry.file_name().to_string_lossy().to_string();
-            let dir = home.join(&name);
+    // The app folder is uppercase, the way the suite is kept on disk. A flat lowercase one is
+    // accepted too, and version folders sitting directly under the apps folder, so a tree the user
+    // made by hand is not missed.
+    let mut found: Vec<Installed> = Vec::new();
+    for home in [apps.join(app.id.to_uppercase()), apps.join(app.id), apps.to_path_buf()] {
+        let Ok(entries) = std::fs::read_dir(&home) else { continue };
+        for entry in entries.flatten() {
+            let dir = entry.path();
             if !dir.is_dir() {
                 continue;
             }
@@ -89,17 +90,21 @@ pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
             if !exe.is_file() {
                 continue;
             }
-            // The version is the folder name the release zip unpacked to (`photocraft-0.6.2-...`).
+            let name = dir.file_name()?.to_string_lossy().to_string();
             let rest = name.strip_prefix(&format!("{}-", app.id)).unwrap_or(&name);
-            return Some(Installed {
-                version: version::parse(rest.split('-').next().unwrap_or(rest)),
+            let Some(version) = version::parse(rest.split('-').next().unwrap_or(rest)) else { continue };
+            found.push(Installed {
+                version: Some(version),
                 source: InstallSource::Launcher,
                 location: exe.display().to_string(),
                 package: None,
             });
         }
     }
-    None
+    // The newest copy: a folder the user made can hold more than one version, and the filesystem
+    // lists them in any order, so the first hit is not always the one to run.
+    found.sort_by(|a, b| b.version.cmp(&a.version));
+    found.into_iter().next()
 }
 
 /// Whether a file name is an AppImage of the app with asset stems `stems`, and the version its
@@ -683,8 +688,28 @@ mod fork_tests {
         std::fs::create_dir_all(&flat).unwrap();
         std::fs::write(flat.join("deckcraft.exe"), "exe").unwrap();
         assert_eq!(scan(CraftApp::by_id("deckcraft").unwrap(), &apps).unwrap().version.as_ref().map(|v| v.to_string()).unwrap(), "0.5.0");
+        // A version folder sitting directly under the apps folder, with no app folder above it.
+        let loose = apps.join("photocraft-0.7.1-windows-x64-portable");
+        std::fs::create_dir_all(&loose).unwrap();
+        std::fs::write(loose.join("photocraft.exe"), "exe").unwrap();
+        assert_eq!(scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap().version.as_ref().map(|v| v.to_string()).unwrap(), "0.7.1");
         // A folder with no exe in it is not an install.
         std::fs::create_dir_all(apps.join("GRIDCRAFT").join("gridcraft-0.5.0")).unwrap();
         assert_eq!(scan(CraftApp::by_id("gridcraft").unwrap(), &apps), None);
+    }
+
+    #[test]
+    fn the_newest_copy_of_an_app_is_the_one_reported() {
+        let dir = tempfile::tempdir().unwrap();
+        let apps = dir.path().join("APPS");
+        // Two versions in the app folder at once. The filesystem lists them in any order, so the
+        // newest has to win no matter which one comes first.
+        for v in ["0.6.2", "0.7.1"] {
+            let d = apps.join("PHOTOCRAFT").join(format!("photocraft-{v}-windows-x64-portable"));
+            std::fs::create_dir_all(&d).unwrap();
+            std::fs::write(d.join("photocraft.exe"), "exe").unwrap();
+        }
+        let found = scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap();
+        assert_eq!(found.version.as_ref().map(|v| v.to_string()).unwrap(), "0.7.1");
     }
 }
