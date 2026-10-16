@@ -765,7 +765,7 @@ impl LauncherUi {
                 fmt(tl!("{done} downloaded"), &[("done", &widgets::human_bytes(p.done))])
             };
             if resp.on_hover_text(tip).clicked() {
-                self.send(Command::Install { app: id.clone() });
+                self.install_app(&id);
             }
             if widgets::glyph_button(ui, widgets::Glyph::Close, tl!("Discard download")).clicked() {
                 self.send(Command::Cancel { app: id.clone() });
@@ -776,18 +776,18 @@ impl LauncherUi {
         match self.primary_action(entry, status) {
             Primary::Install => {
                 if widgets::button(ui, tl!("Install"), Kind::Primary, main_w).clicked() {
-                    self.send(Command::Install { app: id.clone() });
+                    self.install_app(&id);
                 }
             }
             Primary::Retry(label) => {
                 let tip = tl!("The download is still here. It's checked again, then installed.");
                 if widgets::button(ui, &label, Kind::Primary, main_w).on_hover_text(tip).clicked() {
-                    self.send(Command::Install { app: id.clone() });
+                    self.install_app(&id);
                 }
             }
             Primary::Update(v) => {
                 if widgets::button(ui, &fmt(tl!("Update to {v}"), &[("v", &v)]), Kind::Primary, main_w).clicked() {
-                    self.send(Command::Install { app: id.clone() });
+                    self.install_app(&id);
                 }
             }
             Primary::Open => {
@@ -825,7 +825,7 @@ impl LauncherUi {
                 manage && entry.ready && entry.paused.is_none() && matches!(status, AppStatus::Available | AppStatus::UpdateAvailable);
             if can_download_again && ui.button(tl!("Download again")).clicked() {
                 self.send(Command::Cancel { app: id.clone() });
-                self.send(Command::Install { app: id.clone() });
+                self.install_app(&id);
                 ui.close();
             }
             if manage && status.is_installed() {
@@ -838,7 +838,7 @@ impl LauncherUi {
                     ui.close();
                 }
                 if *status == AppStatus::UpToDate && ui.button(tl!("Reinstall")).clicked() {
-                    self.send(Command::Install { app: id.clone() });
+                    self.install_app(&id);
                     ui.close();
                 }
                 ui.separator();

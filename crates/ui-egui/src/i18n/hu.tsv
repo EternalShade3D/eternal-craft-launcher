@@ -89,9 +89,8 @@
 	Notify me when an installed app has an update	Értesítés a telepített alkalmazásokhoz elérhető frissítésekről
 	Include pre-releases (betas and release candidates)	Előzetes kiadások engedélyezése (béta- és kiadásra jelölt verziók)
 	Installing on Linux	Telepítés Linuxon
+	Installing on Windows	Telepítés Windowson
 	Install new apps as	Új alkalmazások csomagformátuma
-	Install folder	Telepítési mappa
-	Choose	Kiválasztás
 	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	Az új telepítések ide kerülnek. A launcher a itt megtalált alkalmazásokat használja. A csak máshol megtalált alkalmazások a saját mappájukban maradnak.
 	System package (recommended)	Rendszercsomag (ajánlott)
 	Updates always use the format an app was installed with.	A frissítések mindig az eredeti telepítés csomagformátumát használják.
@@ -348,3 +347,20 @@ filter	Installed	Telepítve
 	ArtCraft on GitHub	ArtCraft a GitHubon
 	Join the ArtCraft Discord	Csatlakozás az ArtCraft Discord-közösségéhez
 @plural	Eternal Craft Launcher · {n} update available|Eternal Craft Launcher · {n} updates available	Eternal Craft Launcher · {n} frissítés elérhető|Eternal Craft Launcher · {n} frissítés elérhető
+	Install folder	Telepítési mappa
+	Default install folder	Alapértelmezett telepítési mappa
+	System default	Rendszer alapértelmezése
+	Browse…	Tallózás…
+	Use default	Alapértelmezett használata
+	New installs use this folder. Updates stay in their current location.	Az új telepítések ezt a mappát használják. A frissítések a jelenlegi helyükön maradnak.
+	Custom folders use AppImage on Linux.	Linuxon az egyéni mappákhoz AppImage szükséges.
+	The system manages install locations here.	Itt a rendszer kezeli a telepítési helyeket.
+@msg	couldn't use install folder {path}: {reason}	a(z) {path} telepítési mappa nem használható: {reason}
+@msg	this release has no AppImage for a custom install folder	ez a kiadás nem tartalmaz AppImage-fájlt egyéni telepítési mappához
+@msg	custom install folders aren't supported on this system	ezen a rendszeren nem támogatottak az egyéni telepítési mappák
+@msg	{path} already exists and wasn't installed by Eternal Craft Launcher	a(z) {path} már létezik, és nem az Eternal Craft Launcher telepítette
+@msg	couldn't move {path} to Trash ({reason}). Remove it in Finder instead.	a(z) {path} nem helyezhető a Kukába ({reason}). Távolítsa el a Finderben.
+	Apps are placed inside this folder.	Az alkalmazások ebbe a mappába kerülnek.
+	Replace what's there?	Lecseréli, ami ott van?
+	{path} already exists. Installing {name} will overwrite it.	{path} már létezik. A(z) {name} telepítése felülírja.
+	Replace	Csere

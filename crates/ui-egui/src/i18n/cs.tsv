@@ -76,9 +76,8 @@
 	Notify me when an installed app has an update	Upozornit, když má nainstalovaná aplikace aktualizaci
 	Include pre-releases (betas and release candidates)	Zahrnout předběžná vydání (beta verze a kandidáty na vydání)
 	Installing on Linux	Instalace v Linuxu
+	Installing on Windows	Instalace ve Windows
 	Install new apps as	Instalovat nové aplikace jako
-	Install folder	Složka pro instalaci
-	Choose	Vybrat
 	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	Nové instalace jdou sem. Aplikace nalezené tady launcher používá. Aplikace nalezené jen jinde zůstanou ve své složce.
 	System package (recommended)	Systémový balíček (doporučeno)
 	Updates always use the format an app was installed with.	Aktualizace vždy použijí formát, ve kterém byla aplikace nainstalována.
@@ -315,3 +314,20 @@ filter	Installed	Nainstalováno
 	ArtCraft on GitHub	ArtCraft na GitHubu
 	Join the ArtCraft Discord	Připojit se na ArtCraft Discord
 @plural	Eternal Craft Launcher · {n} update available|Eternal Craft Launcher · {n} updates available	Eternal Craft Launcher · {n} dostupná aktualizace|Eternal Craft Launcher · {n} dostupné aktualizace|Eternal Craft Launcher · {n} dostupných aktualizací
+	Install folder	Instalační složka
+	Default install folder	Výchozí instalační složka
+	System default	Výchozí nastavení systému
+	Browse…	Procházet…
+	Use default	Použít výchozí
+	New installs use this folder. Updates stay in their current location.	Nové instalace používají tuto složku. Aktualizace zůstávají v aktuálním umístění.
+	Custom folders use AppImage on Linux.	Vlastní složky používají v Linuxu formát AppImage.
+	The system manages install locations here.	Umístění instalací zde spravuje systém.
+@msg	couldn't use install folder {path}: {reason}	instalační složku {path} nelze použít: {reason}
+@msg	this release has no AppImage for a custom install folder	toto vydání nemá AppImage pro vlastní instalační složku
+@msg	custom install folders aren't supported on this system	vlastní instalační složky nejsou v tomto systému podporovány
+@msg	{path} already exists and wasn't installed by Eternal Craft Launcher	{path} již existuje a nebylo nainstalováno aplikací Eternal Craft Launcher
+@msg	couldn't move {path} to Trash ({reason}). Remove it in Finder instead.	{path} nelze přesunout do koše ({reason}). Odstraňte položku ve Finderu.
+	Apps are placed inside this folder.	Aplikace se umístí do této složky.
+	Replace what's there?	Nahradit, co tam je?
+	{path} already exists. Installing {name} will overwrite it.	{path} už existuje. Instalace aplikace {name} ho přepíše.
+	Replace	Nahradit

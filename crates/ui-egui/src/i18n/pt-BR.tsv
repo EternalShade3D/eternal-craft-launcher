@@ -77,9 +77,8 @@
 	Notify me when an installed app has an update	Notificar quando um aplicativo instalado tiver atualização
 	Include pre-releases (betas and release candidates)	Incluir versões de pré-lançamento (betas e RC)
 	Installing on Linux	Instalação no Linux
+	Installing on Windows	Instalação no Windows
 	Install new apps as	Instalar novos aplicativos como
-	Install folder	Pasta de instalação
-	Choose	Escolher
 	New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.	As novas instalações vão para aqui. Os aplicativos encontrados aqui são os que o launcher usa. Os aplicativos encontrados só em outro lugar ficam na pasta onde estão.
 	System package (recommended)	Pacote do sistema (recomendado)
 	Updates always use the format an app was installed with.	As atualizações sempre usam o formato com o qual o aplicativo foi instalado.
@@ -335,3 +334,20 @@ filter	Installed	Instalados
 	Loading pictures…	Carregando imagens…
 	Pictures couldn't be loaded. Reopen this page to try again.	Não foi possível carregar as imagens. Abra a página novamente para tentar de novo.
 @plural	Eternal Craft Launcher · {n} update available|Eternal Craft Launcher · {n} updates available	Eternal Craft Launcher · {n} atualização disponível|Eternal Craft Launcher · {n} atualizações disponíveis
+	Install folder	Pasta de instalação
+	Default install folder	Pasta de instalação padrão
+	System default	Padrão do sistema
+	Browse…	Procurar…
+	Use default	Usar padrão
+	New installs use this folder. Updates stay in their current location.	Novas instalações usam esta pasta. As atualizações mantêm o local atual.
+	Custom folders use AppImage on Linux.	Pastas personalizadas usam AppImage no Linux.
+	The system manages install locations here.	O sistema gerencia os locais de instalação neste ambiente.
+@msg	couldn't use install folder {path}: {reason}	não foi possível usar a pasta de instalação {path}: {reason}
+@msg	this release has no AppImage for a custom install folder	esta versão não tem um AppImage para uma pasta de instalação personalizada
+@msg	custom install folders aren't supported on this system	pastas de instalação personalizadas não são compatíveis com este sistema
+@msg	{path} already exists and wasn't installed by Eternal Craft Launcher	{path} já existe e não foi instalado pelo Eternal Craft Launcher
+@msg	couldn't move {path} to Trash ({reason}). Remove it in Finder instead.	não foi possível mover {path} para o Lixo ({reason}). Remova-o pelo Finder.
+	Apps are placed inside this folder.	Os aplicativos são colocados dentro desta pasta.
+	Replace what's there?	Substituir o que já existe?
+	{path} already exists. Installing {name} will overwrite it.	{path} já existe. Instalar o {name} vai substituí-lo.
+	Replace	Substituir

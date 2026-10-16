@@ -12,7 +12,7 @@ use crate::widgets::{self, Cell, Kind};
 
 impl LauncherUi {
     pub(crate) fn dialogs(&mut self, ctx: &egui::Context, host: &mut dyn Host) {
-        let Some(dialog) = self.dialog.clone() else {
+        let Some(mut dialog) = self.dialog.clone() else {
             self.alert_popup(ctx);
             return;
         };
@@ -22,14 +22,18 @@ impl LauncherUi {
         let modal = egui::Modal::new(egui::Id::new("dialog").with(dialog.key()))
             .frame(egui::Frame::new().fill(t.bg).stroke(egui::Stroke::new(1.0, t.line_strong)).shadow(theme::shadow(&t)).inner_margin(24));
         let mut close = false;
-        let response = match &dialog {
+        let response = match &mut dialog {
             Dialog::Notes(id) => modal.show(ctx, |ui| close = self.notes_dialog(ui, id)),
             Dialog::ConfirmUninstall(id) => modal.show(ctx, |ui| close = self.uninstall_dialog(ui, id)),
+            Dialog::Install { app, folder } => modal.show(ctx, |ui| close = self.install_dialog(ui, app, folder, host)),
+            Dialog::Replace { app, path } => modal.show(ctx, |ui| close = self.replace_dialog(ui, app, path)),
             Dialog::Settings => modal.show(ctx, |ui| close = self.settings_dialog(ui, host)),
             Dialog::LauncherUpdate(r) => modal.show(ctx, |ui| close = self.launcher_update_dialog(ui, r)),
         };
         if close || response.should_close() {
             self.dialog = None;
+        } else {
+            self.dialog = Some(dialog);
         }
     }
 
@@ -180,6 +184,80 @@ impl LauncherUi {
         close
     }
 
+    fn replace_dialog(&mut self, ui: &mut egui::Ui, id: &str, path: &str) -> bool {
+        let Some(app) = self.entry(id).map(|e| e.app) else { return true };
+        let t = Tokens::get(ui.ctx());
+        ui.set_width(440.0f32.min(ui.ctx().content_rect().width() - 80.0));
+        Self::title(ui, crate::icons::app(id), tl!("Replace what's there?"), "");
+        ui.label(
+            RichText::new(fmt(tl!("{path} already exists. Installing {name} will overwrite it."), &[("path", path), ("name", app.name)]))
+                .color(t.muted),
+        );
+        ui.add_space(20.0);
+        let mut close = false;
+        ui.horizontal(|ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if widgets::button(ui, tl!("Replace"), Kind::Danger, 110.0).clicked() {
+                    self.send(Command::Replace { app: id.to_string() });
+                    close = true;
+                }
+                if widgets::button(ui, tl!("Cancel"), Kind::Secondary, 90.0).clicked() {
+                    close = true;
+                }
+            });
+        });
+        close
+    }
+
+    fn install_dialog(&mut self, ui: &mut egui::Ui, id: &str, folder: &mut String, host: &mut dyn Host) -> bool {
+        let Some(app) = self.entry(id).map(|e| e.app) else { return true };
+        ui.set_width(440.0f32.min(ui.ctx().content_rect().width() - 80.0));
+        Self::title(ui, None, app.name, tl!("Install folder"));
+        let default = self.settings.install_locations.root.as_deref().unwrap_or(tl!("System default"));
+        Self::folder_field(ui, folder, Some(default), host);
+        if self.platform.is_some_and(|p| p.os == Os::Linux) {
+            ui.label(tl!("Custom folders use AppImage on Linux."));
+        }
+        ui.add_space(14.0);
+        let mut close = false;
+        ui.horizontal(|ui| {
+            if widgets::button(ui, tl!("Install"), Kind::Primary, 100.0).clicked() {
+                if folder.is_empty() {
+                    self.settings.install_locations.per_app.remove(id);
+                } else {
+                    self.settings.install_locations.per_app.insert(id.to_string(), folder.clone());
+                }
+                self.configure();
+                self.send(Command::Install { app: id.to_string() });
+                close = true;
+            }
+            close |= widgets::button(ui, tl!("Cancel"), Kind::Secondary, 90.0).clicked();
+        });
+        close
+    }
+
+    fn folder_field(ui: &mut egui::Ui, folder: &mut String, default: Option<&str>, host: &mut dyn Host) {
+        let label = ui.label(tl!("Install folder"));
+        ui.add(
+            egui::TextEdit::singleline(folder)
+                .id_salt("install_folder")
+                .hint_text(default.unwrap_or(tl!("System default")))
+                .desired_width(f32::INFINITY),
+        )
+        .labelled_by(label.id);
+        ui.label(tl!("Apps are placed inside this folder."));
+        ui.horizontal(|ui| {
+            if widgets::button(ui, tl!("Browse…"), Kind::Secondary, 100.0).clicked()
+                && let Some(selected) = host.pick_folder(if folder.is_empty() { default } else { Some(folder.as_str()) })
+            {
+                *folder = selected;
+            }
+            if widgets::button(ui, tl!("Use default"), Kind::Secondary, 120.0).clicked() {
+                folder.clear();
+            }
+        });
+    }
+
     fn settings_dialog(&mut self, ui: &mut egui::Ui, host: &mut dyn Host) -> bool {
         // Leave room for the frame (48 px) and a 16 px gutter on each side.
         let viewport = ui.ctx().content_rect();
@@ -285,6 +363,43 @@ impl LauncherUi {
         ui.checkbox(&mut self.settings.notify, tl!("Notify me when an installed app has an update"));
         ui.checkbox(&mut self.settings.prereleases, tl!("Include pre-releases (betas and release candidates)"));
 
+        if self.caps.manage_apps {
+            section(ui, tl!("Default install folder"));
+            if self.custom_install_folders() {
+                let mut folder = self.settings.install_locations.root.clone().unwrap_or_default();
+                Self::folder_field(ui, &mut folder, None, host);
+                self.settings.install_locations.root = (!folder.is_empty()).then_some(folder);
+                ui.label(RichText::new(tl!("New installs use this folder. Updates stay in their current location.")).size(12.0).color(t.muted));
+                // Fork: the picked folder is also where the launcher looks for apps the user placed by
+                // hand, so a hand-built suite is used without being re-downloaded.
+                ui.label(RichText::new(tl!("New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.")).size(12.0).color(t.muted));
+                if self.platform.is_some_and(|p| p.os == Os::Linux) {
+                    ui.label(RichText::new(tl!("Custom folders use AppImage on Linux.")).size(12.0).color(t.muted));
+                }
+            } else {
+                ui.label(tl!("The system manages install locations here."));
+            }
+        }
+
+        // Fork: Windows has a choice too, between the portable zip and the installer. Upstream only
+        // offers a picker on Linux; here the portable zip is the default, matching
+        // `install::available_kinds()`, which puts it first.
+        if self.caps.manage_apps && self.platform.is_some_and(|p| p.os == Os::Windows) {
+            section(ui, &fmt(tl!("Installing for {platform}"), &[("platform", &Os::Windows.label())]));
+            let mut choice = self.settings.preferred_kinds.first().copied().or(Some(PackageKind::PortableZip));
+            row(ui, tl!("Install new apps as"), 210.0, &mut |ui| {
+                let label = crate::i18n::t(choice.unwrap_or(PackageKind::PortableZip).label());
+                egui::ComboBox::from_id_salt("win-kind").selected_text(label).width(210.0).show_ui(ui, |ui| {
+                    for k in [PackageKind::PortableZip, PackageKind::Msi] {
+                        ui.selectable_value(&mut choice, Some(k), crate::i18n::t(k.label()));
+                    }
+                });
+            });
+            self.settings.preferred_kinds = choice.into_iter().collect();
+            ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
+
+        }
+
         if self.caps.manage_apps && self.platform.is_some_and(|p| p.os == Os::Linux) {
             section(ui, tl!("Installing on Linux"));
             let is_flatpak = crate::settings::is_flatpak_sandbox();
@@ -319,57 +434,6 @@ impl LauncherUi {
             });
             self.settings.preferred_kinds = choice.into_iter().collect();
             ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
-        }
-
-        // Fork: where new installs go. Upstream always unpacks into the launcher's own folder, so a
-        // portable suite had to be next to the launcher. Here the user can point it anywhere,
-        // including a drive the launcher itself is not on. `paths::apps()` honours this on every
-        // platform, so the row is not a Windows-only one.
-        if self.caps.manage_apps {
-            // Fork: where new installs go. Upstream always unpacks into the launcher's own folder, so a
-            // portable suite had to be next to the launcher. Here the user can point it anywhere,
-            // including a drive the launcher itself is not on. `paths::apps()` honours this on every
-            // platform, so the row is not a Windows-only one.
-            // A path is long, so this one is not a label-and-control row: the label gets its own line
-            // and the field takes all the width left after the button, which is what lets a folder on
-            // another drive be read instead of cut off.
-            ui.label(tl!("Install folder"));
-            let mut picked = self.settings.install_dir.clone();
-            #[cfg(not(target_arch = "wasm32"))]
-            let choose_width = widgets::button_width(ui, tl!("Choose"), 0.0) + ui.spacing().item_spacing.x;
-            #[cfg(target_arch = "wasm32")]
-            let choose_width = 0.0;
-            let field_width = (ui.available_width() - choose_width).max(140.0);
-            ui.horizontal(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut picked).desired_width(field_width).min_size(vec2(0.0, theme::CONTROL_H)));
-                #[cfg(not(target_arch = "wasm32"))]
-                if widgets::button(ui, tl!("Choose"), Kind::Secondary, 0.0).clicked()
-                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
-                {
-                    picked = dir.display().to_string();
-                }
-                self.settings.install_dir = picked;
-            });
-            ui.label(RichText::new(tl!("New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.")).size(12.0).color(t.muted));
-        }
-
-        // Fork: Windows has a choice too, between the portable zip and the installer. Upstream only
-        // offers a picker on Linux; here the portable zip is the default, matching
-        // `install::available_kinds()`, which puts it first.
-        if self.caps.manage_apps && self.platform.is_some_and(|p| p.os == Os::Windows) {
-            section(ui, &fmt(tl!("Installing for {platform}"), &[("platform", &Os::Windows.label())]));
-            let mut choice = self.settings.preferred_kinds.first().copied().or(Some(PackageKind::PortableZip));
-            row(ui, tl!("Install new apps as"), 210.0, &mut |ui| {
-                let label = crate::i18n::t(choice.unwrap_or(PackageKind::PortableZip).label());
-                egui::ComboBox::from_id_salt("win-kind").selected_text(label).width(210.0).show_ui(ui, |ui| {
-                    for k in [PackageKind::PortableZip, PackageKind::Msi] {
-                        ui.selectable_value(&mut choice, Some(k), crate::i18n::t(k.label()));
-                    }
-                });
-            });
-            self.settings.preferred_kinds = choice.into_iter().collect();
-            ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
-
         }
 
         if self.caps.manage_apps {
