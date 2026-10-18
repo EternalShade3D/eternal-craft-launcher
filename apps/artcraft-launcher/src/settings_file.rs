@@ -102,8 +102,11 @@ mod tests {
 
     #[test]
     fn a_portable_suite_keeps_its_settings_inside_itself() {
-        let root = PathBuf::from("E:\\Suite\\EternalCraftLauncherData");
-        assert_eq!(portable_settings(&root), PathBuf::from("E:\\Suite\\EternalCraftLauncherData\\data\\app.ron"));
+        // Built with `join`, so the test says the same thing on Windows and on Linux.
+        let root = std::env::temp_dir().join("EternalCraftLauncherData");
+        let path = portable_settings(&root);
+        assert_eq!(path.file_name().and_then(|n| n.to_str()), Some("app.ron"));
+        assert_eq!(path.parent(), Some(root.join("data").as_path()));
     }
 
     #[test]

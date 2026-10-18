@@ -511,7 +511,9 @@ mod tests {
     fn a_new_install_writes_over_unrecorded_files_only_when_asked_to() {
         let dir = tempfile::tempdir().unwrap();
         let app = CraftApp::by_id("photocraft").unwrap();
-        let paths = Paths::under(dir.path());
+        // The record check compares the recorded folder against where it resolves to now, so the
+        // base has to be the long form: CI's temp folder comes back as `RUNNER~1`.
+        let paths = Paths::under(&dir.path().canonicalize().unwrap());
         // Fork: a new install gets its own version folder, so a copy the user placed by hand somewhere
         // else in the apps folder is left alone.
         let hand = paths.apps().join("PHOTOCRAFT").join("photocraft-0.4.0-windows-x64-portable");
