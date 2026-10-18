@@ -72,7 +72,7 @@ fn resolve_missing(path: &Path) -> Result<PathBuf, String> {
     Err("The installation folder has no existing ancestor.".into())
 }
 
-fn same_windows_path(left: &Path, right: &Path) -> bool {
+pub(crate) fn same_windows_path(left: &Path, right: &Path) -> bool {
     fn normalized(path: &Path) -> String {
         let text = path.to_string_lossy();
         let text = text.strip_prefix(r"\\?\").unwrap_or(&text);

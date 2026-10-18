@@ -107,7 +107,20 @@ pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
 /// or an installer registry entry. Without a picked folder the usual order stands: the launcher's
 /// own record, then the system.
 pub fn pick(picked: Option<Installed>, other: Option<Installed>) -> Option<Installed> {
-    picked.or(other)
+    match (picked, other) {
+        (Some(mut picked), Some(other)) => {
+            // The same exe: the record knows the version that is really installed. The folder name
+            // is only a hint, and an in-place update leaves it saying the version it was named for
+            // the first time, which made the launcher report the old version and offer it again.
+            if other.version.is_some()
+                && crate::portable::same_windows_path(std::path::Path::new(&picked.location), std::path::Path::new(&other.location))
+            {
+                picked.version = other.version;
+            }
+            Some(picked)
+        }
+        (picked, other) => picked.or(other),
+    }
 }
 
 /// Whether a file name is an AppImage of the app with asset stems `stems`, and the version its
@@ -743,6 +756,24 @@ mod fork_tests {
         }
         let found = scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap();
         assert_eq!(found.version.as_ref().map(|v| v.to_string()).unwrap(), "0.7.1");
+    }
+
+    #[test]
+    fn a_record_for_the_same_file_wins_over_a_stale_folder_name() {
+        // An update writes into the folder the app already had, so that folder keeps the name of the
+        // version it was first installed as. The record knows what is really inside it.
+        let location = "C:\\Suite\\APPS\\PHOTOCRAFT\\photocraft-0.9.0-windows-x64-portable\\photocraft.exe".to_string();
+        let scanned = Installed { version: version::parse("0.9.0"), source: InstallSource::Launcher, location: location.clone(), package: None };
+        let record = Installed { version: version::parse("0.10.0"), source: InstallSource::Launcher, location, package: None };
+        assert_eq!(pick(Some(scanned.clone()), Some(record)).and_then(|i| i.version).map(|v| v.to_string()).as_deref(), Some("0.10.0"));
+        // A different file is still the copy the user picked in Settings.
+        let elsewhere = Installed {
+            version: version::parse("0.8.0"),
+            source: InstallSource::Launcher,
+            location: "C:\\Elsewhere\\photocraft.exe".into(),
+            package: None,
+        };
+        assert_eq!(pick(Some(scanned), Some(elsewhere)).and_then(|i| i.version).map(|v| v.to_string()).as_deref(), Some("0.9.0"));
     }
 
     #[test]

@@ -193,10 +193,6 @@ impl NativeBackend {
                 // Program Files and a portable copy on a drive at the same time, and the folder they
                 // picked is the one they want the launcher to use. Windows detection on its own is
                 // the installer registry, which is why a portable copy on a drive showed nothing.
-                // Fork: the folder Settings points at is looked in first. A user can have the app in
-                // Program Files and a portable copy on a drive at the same time, and the folder they
-                // picked is the one they want the launcher to use. Windows detection on its own is
-                // the installer registry, which is why a portable copy on a drive showed nothing.
                 let scanned = crate::detect::scan(app, &paths.apps());
                 let found = crate::detect::pick(scanned.clone(), crate::detect::detect(app, &manifest, &snapshot));
                 // Only a copy found in the picked folder is recorded here: a record or an installer
