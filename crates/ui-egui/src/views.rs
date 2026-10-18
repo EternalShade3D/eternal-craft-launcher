@@ -5,7 +5,7 @@ use artcraft_launcher_core::details::AppDetails;
 use artcraft_launcher_core::platform::pick_asset;
 use artcraft_launcher_core::protocol::{Command, JobPhase};
 use artcraft_launcher_core::status::AppStatus;
-use artcraft_launcher_core::{AppGroup, SUITE, time};
+use artcraft_launcher_core::{SUITE, time};
 use egui::{Color32, CornerRadius, FontId, Rect, RichText, Sense, Stroke, Ui, vec2};
 
 use crate::app::{Dialog, LauncherUi, TitleBar};
@@ -80,7 +80,9 @@ impl LauncherUi {
             // The launcher's own wordmark, in its own cell.
             let logo = vec2(14.0 * crate::icons::WORDMARK_ASPECT, 14.0);
             let (cell, _) = ui.allocate_exact_size(vec2(logo.x + 40.0, h), Sense::hover());
-            egui::Image::new(crate::icons::wordmark(t.dark)).alt_text(tl!("Eternal Craft Launcher")).paint_at(ui, Rect::from_center_size(cell.center(), logo));
+            egui::Image::new(crate::icons::wordmark(t.dark))
+                .alt_text(tl!("Eternal Craft Launcher"))
+                .paint_at(ui, Rect::from_center_size(cell.center(), logo));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if bar == TitleBar::Custom {
                     widgets::window_buttons(ui, h);
@@ -93,7 +95,7 @@ impl LauncherUi {
                 }
                 ui.add_space(6.0);
                 if widgets::nav_link(ui, tl!("Discord"), tl!("Join the ArtCraft community on Discord"), h, false).clicked() {
-                    ui.ctx().open_url(egui::OpenUrl::new_tab(artcraft_launcher_core::catalog::DISCORD_URL));
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(self.discord_url));
                 }
                 ui.add_space(6.0);
                 widgets::rule(ui, h);
@@ -319,8 +321,8 @@ impl LauncherUi {
             Some(p) => fmt(tl!("Downloads for {platform}"), &[("platform", &p.label())]),
             None => tl!("No downloads for this system").into(),
         };
-        use artcraft_launcher_core::catalog::{DISCORD_URL, GITHUB_URL, SOCIAL, WEBSITE_URL};
-        let links = [(tl!("Discord"), DISCORD_URL), (tl!("GitHub"), GITHUB_URL), (tl!("Website"), WEBSITE_URL)];
+        use artcraft_launcher_core::catalog::{GITHUB_URL, SOCIAL, WEBSITE_URL};
+        let links = [(tl!("Discord"), self.discord_url), (tl!("GitHub"), GITHUB_URL), (tl!("Website"), WEBSITE_URL)];
         let (icon, link_gap) = (13.0, 16.0);
         // The links and icons on the right keep their size; the status on the left gets what is
         // left and is cut short with "…", never drawn under them. A narrow window drops the
@@ -466,9 +468,6 @@ impl LauncherUi {
                 ui.spacing_mut().interact_size.y = 0.0;
                 ui.horizontal(|ui| {
                     widgets::wordmark(ui, app, 22.0);
-                    if app.group == AppGroup::New {
-                        widgets::badge(ui, tl!("New"), t.app_ink(app));
-                    }
                 });
                 ui.add(egui::Label::new(RichText::new(tr_ctx(current(), app.id, app.tagline)).font(tagline.clone()).color(t.muted)).truncate());
             });

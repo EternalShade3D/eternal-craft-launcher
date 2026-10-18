@@ -336,7 +336,7 @@ fn single_top(files: &[PathBuf]) -> Option<PathBuf> {
     let top = PathBuf::from(first_component.as_os_str());
     let inside = |relative: &PathBuf| -> bool {
         let Some(c) = relative.components().next() else { return false };
-        relative.components().count() > 1 && PathBuf::from(c.as_os_str()) == top
+        relative.components().count() > 1 && c.as_os_str() == top.as_os_str()
     };
     files.iter().all(inside).then_some(top)
 }
@@ -346,10 +346,8 @@ fn single_top(files: &[PathBuf]) -> Option<PathBuf> {
 /// already points at its own folder, so only new installs get this shape.
 fn fork_folder(app: &CraftApp, version: &str, parent: &Path, top: Option<&Path>) -> PathBuf {
     let id = app.id;
-    let name = top
-        .and_then(|t| t.file_name())
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| format!("{id}-{version}-windows-x64-portable"));
+    let name =
+        top.and_then(|t| t.file_name()).map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| format!("{id}-{version}-windows-x64-portable"));
     parent.join(app.id.to_uppercase()).join(name)
 }
 

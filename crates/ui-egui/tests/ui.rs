@@ -197,7 +197,7 @@ fn harness_with(
     manage: bool,
     scale: f32,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, Rc::default(), None)
+    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, Rc::default(), None, None)
 }
 
 /// Fork: a harness that reports Windows, where there is a real choice between the portable zip and
@@ -212,6 +212,7 @@ fn harness_windows(view: ViewMode, theme: egui::Theme, manage: bool) -> (Harness
         artcraft_launcher_ui_egui::TitleBar::Native,
         Rc::default(),
         Some(Platform { os: Os::Windows, arch: Arch::X64 }),
+        None,
     )
 }
 
@@ -224,7 +225,7 @@ fn harness_pictures(
     scale: f32,
     pictures: Rc<Cell<Pictures>>,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, pictures, None)
+    harness_full(events, view, theme, manage, scale, artcraft_launcher_ui_egui::TitleBar::Native, pictures, None, None)
 }
 
 fn harness_with_title_bar(
@@ -235,7 +236,21 @@ fn harness_with_title_bar(
     scale: f32,
     bar: artcraft_launcher_ui_egui::TitleBar,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    harness_full(events, view, theme, manage, scale, bar, Rc::default(), None)
+    harness_full(events, view, theme, manage, scale, bar, Rc::default(), None, None)
+}
+
+fn harness_with_discord(discord_url: Option<&'static str>) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
+    harness_full(
+        events(),
+        ViewMode::Grid,
+        egui::Theme::Dark,
+        true,
+        1.0,
+        artcraft_launcher_ui_egui::TitleBar::Native,
+        Rc::default(),
+        None,
+        discord_url,
+    )
 }
 
 #[allow(clippy::too_many_arguments)] // Test fixture inputs vary independently across existing cases.
@@ -248,11 +263,15 @@ fn harness_full(
     bar: artcraft_launcher_ui_egui::TitleBar,
     pictures: Rc<Cell<Pictures>>,
     platform: Option<Platform>,
+    discord_url: Option<&'static str>,
 ) -> (Harness<'static, Option<LauncherUi>>, Rc<RefCell<Vec<Command>>>) {
-    struct HeaderHost(artcraft_launcher_ui_egui::TitleBar);
+    struct HeaderHost(artcraft_launcher_ui_egui::TitleBar, Option<&'static str>);
     impl Host for HeaderHost {
         fn title_bar(&self) -> artcraft_launcher_ui_egui::TitleBar {
             self.0
+        }
+        fn discord_url(&self) -> &'static str {
+            self.1.unwrap_or(artcraft_launcher_core::catalog::DISCORD_URL)
         }
     }
     // Integration tests compile without cfg!(test), so system_lang() picks up the
@@ -260,7 +279,15 @@ fn harness_full(
     artcraft_launcher_ui_egui::i18n::set_test_lang(artcraft_launcher_ui_egui::i18n::Lang::EN);
     let sent = Rc::new(RefCell::new(Vec::new()));
     let sent2 = sent.clone();
-    let fake = Fake { events, sent: sent2, manage, os: platform.map(|p| p.os).unwrap_or(Os::MacOs), pictures, asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) };
+    let fake = Fake {
+        events,
+        sent: sent2,
+        manage,
+        os: platform.map(|p| p.os).unwrap_or(Os::MacOs),
+        pictures,
+        asked: Vec::new(),
+        clock: Rc::new(Cell::new(NOW)),
+    };
     let mut backend: Option<Box<dyn Backend>> = Some(match platform {
         Some(platform) => Box::new(PlatformFake { inner: fake, platform }),
         None => Box::new(fake),
@@ -268,7 +295,7 @@ fn harness_full(
     let settings = Settings { view, notify: false, ..Settings::default() };
     // No `.wgpu()`: it gives every test its own GPU device, and those segfault on parallel test threads (see above).
     // The default renderer creates one only when a test renders.
-    let harness = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).with_pixels_per_point(scale).with_theme(theme).build_ui_state(
+    let harness = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).with_pixels_per_point(scale).with_theme(theme).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -282,8 +309,8 @@ fn harness_full(
                 *state = Some(LauncherUi::new(ui.ctx(), b, s));
             }
             if let Some(l) = state.as_mut() {
-                l.logic(&ui.ctx().clone(), &mut HeaderHost(bar));
-                l.ui(ui, &mut HeaderHost(bar));
+                l.logic(&ui.ctx().clone(), &mut HeaderHost(bar, discord_url));
+                l.ui(ui, &mut HeaderHost(bar, discord_url));
             }
         },
         None,
@@ -424,6 +451,7 @@ fn windows_package_choice_can_select_portable_and_configures_the_backend() {
         artcraft_launcher_ui_egui::TitleBar::Native,
         Rc::default(),
         Some(Platform { os: Os::Windows, arch: Arch::X64 }),
+        None,
     );
     h.run_steps(8);
     h.get_by_label("Settings").click();
@@ -463,16 +491,15 @@ fn install_locations_survive_settings_save_and_older_settings_use_system_default
 #[test]
 fn keeps_working_with_no_window_then_draws_in_a_new_one() {
     let sent = Rc::new(RefCell::new(Vec::new()));
-    let backend =
-        Fake {
-            os: Os::MacOs,
-            events: events(),
-            sent: sent.clone(),
-            manage: true,
-            pictures: Rc::default(),
-            asked: Vec::new(),
-            clock: Rc::new(Cell::new(NOW)),
-        };
+    let backend = Fake {
+        os: Os::MacOs,
+        events: events(),
+        sent: sent.clone(),
+        manage: true,
+        pictures: Rc::default(),
+        asked: Vec::new(),
+        clock: Rc::new(Cell::new(NOW)),
+    };
     let windowless = egui::Context::default();
     let mut ui = LauncherUi::new(&windowless, Box::new(backend), Settings { notify: false, ..Settings::default() });
     // No window: the backend's news is still taken in.
@@ -482,7 +509,7 @@ fn keeps_working_with_no_window_then_draws_in_a_new_one() {
     assert_eq!(ui.settings.last_check, Some(NOW - 180));
 
     let mut attached = false;
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |egui_ui, state: &mut LauncherUi| {
             if !attached {
                 attached = true;
@@ -910,7 +937,7 @@ fn links_to_the_website_github_and_each_apps_pages() {
     // The table's … menu has the app's website and GitHub repo.
     let (mut h, _) = harness(ViewMode::Table, egui::Theme::Dark, true);
     h.run_steps(6);
-    h.get_all_by_label("…").nth(7).unwrap().click(); // WordCraft
+    h.get_all_by_label("…").nth(8).unwrap().click(); // WordCraft
     h.run_steps(3);
     h.get_by_label("GitHub repository");
     // The footer's Website link and WordCraft's now-live one in the menu.
@@ -968,20 +995,26 @@ fn links_open_the_right_pages() {
 }
 
 #[test]
+fn discord_link_opens_app_when_discord_is_installed() {
+    let (mut h, _) = harness_with_discord(Some(artcraft_launcher_core::catalog::DISCORD_APP_URL));
+    h.run_steps(6);
+    assert_eq!(click_opens(&mut h, "Discord").as_deref(), Some("discord://-/invite/artcraft"));
+}
+
+#[test]
 fn looks_again_at_installed_apps_every_few_minutes_not_every_frame() {
     let sent = Rc::new(RefCell::new(Vec::new()));
     let clock = Rc::new(Cell::new(NOW));
-    let mut backend =
-        Some(Fake {
-            os: Os::MacOs,
-            events: events(),
-            sent: sent.clone(),
-            manage: true,
-            pictures: Rc::default(),
-            asked: Vec::new(),
-            clock: clock.clone(),
-        });
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut backend = Some(Fake {
+        os: Os::MacOs,
+        events: events(),
+        sent: sent.clone(),
+        manage: true,
+        pictures: Rc::default(),
+        asked: Vec::new(),
+        clock: clock.clone(),
+    });
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -1055,7 +1088,7 @@ fn the_launcher_updates_itself_and_quits_to_restart() {
         },
         later: shared_events.clone(),
     });
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -1133,16 +1166,9 @@ fn feed_announcements_and_alerts_show_until_dismissed() {
         announcements: vec![notice("a1", "CADCraft 1.0 is out", Some("https://getartcraft.com/news"))],
         alerts: vec![notice("x1", "Security update", Some("https://getartcraft.com/security"))],
     });
-        let mut backend = Some(Fake {
-        os: Os::MacOs,
-        events: evs,
-        sent,
-        manage: true,
-        pictures: Rc::default(),
-        asked: Vec::new(),
-        clock: Rc::new(Cell::new(NOW)),
-    });
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut backend =
+        Some(Fake { os: Os::MacOs, events: evs, sent, manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -1188,17 +1214,16 @@ fn automatic_updates_queue_installs_for_outdated_apps_and_launcher() {
     ev.push(Event::LauncherUpdate(release("artcraft-launcher", "0.2.0", NOW)));
     let sent = Rc::new(RefCell::new(Vec::new()));
     let sent2 = sent.clone();
-    let mut backend =
-        Some(Fake {
-            os: Os::MacOs,
-            events: ev,
-            sent: sent2,
-            manage: true,
-            pictures: Rc::default(),
-            asked: Vec::new(),
-            clock: Rc::new(Cell::new(NOW)),
-        });
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut backend = Some(Fake {
+        os: Os::MacOs,
+        events: ev,
+        sent: sent2,
+        manage: true,
+        pictures: Rc::default(),
+        asked: Vec::new(),
+        clock: Rc::new(Cell::new(NOW)),
+    });
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -1225,17 +1250,16 @@ fn automatic_updates_are_disabled_by_default() {
     ev.push(Event::LauncherUpdate(release("artcraft-launcher", "0.2.0", NOW)));
     let sent = Rc::new(RefCell::new(Vec::new()));
     let sent2 = sent.clone();
-    let mut backend =
-        Some(Fake {
-            os: Os::MacOs,
-            events: ev,
-            sent: sent2,
-            manage: true,
-            pictures: Rc::default(),
-            asked: Vec::new(),
-            clock: Rc::new(Cell::new(NOW)),
-        });
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut backend = Some(Fake {
+        os: Os::MacOs,
+        events: ev,
+        sent: sent2,
+        manage: true,
+        pictures: Rc::default(),
+        asked: Vec::new(),
+        clock: Rc::new(Cell::new(NOW)),
+    });
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -1261,16 +1285,9 @@ fn the_footer_names_the_services_behind_what_is_on_screen() {
         let mut evs = events();
         evs.extend(extra);
         let sent = Rc::new(RefCell::new(Vec::new()));
-            let mut backend = Some(Fake {
-            os: Os::MacOs,
-            events: evs,
-            sent,
-            manage: true,
-            pictures: Rc::default(),
-            asked: Vec::new(),
-            clock: Rc::new(Cell::new(NOW)),
-        });
-        let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+        let mut backend =
+            Some(Fake { os: Os::MacOs, events: evs, sent, manage: true, pictures: Rc::default(), asked: Vec::new(), clock: Rc::new(Cell::new(NOW)) });
+        let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
             move |ui, state: &mut Option<LauncherUi>| {
                 if state.is_none()
                     && let Some(b) = backend.take()
@@ -1321,7 +1338,7 @@ fn custom_title_bar_has_window_buttons() {
         asked: Vec::new(),
         clock: Rc::new(Cell::new(NOW)),
     });
-    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 900.0)).build_ui_state(
+    let mut h = Harness::builder().with_size(egui::vec2(1180.0, 1200.0)).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
             if state.is_none()
                 && let Some(b) = backend.take()
@@ -1704,16 +1721,15 @@ impl Host for OsMotion {
 fn short_window(reduce: Rc<Cell<bool>>) -> Harness<'static, Option<LauncherUi>> {
     artcraft_launcher_ui_egui::i18n::set_test_lang(artcraft_launcher_ui_egui::i18n::Lang::EN);
     let events = events().into_iter().filter(|e| !matches!(e, Event::Progress { .. })).collect();
-    let mut backend =
-        Some(Fake {
-            os: Os::MacOs,
-            events,
-            sent: Rc::default(),
-            manage: true,
-            pictures: Rc::default(),
-            asked: Vec::new(),
-            clock: Rc::new(Cell::new(NOW)),
-        });
+    let mut backend = Some(Fake {
+        os: Os::MacOs,
+        events,
+        sent: Rc::default(),
+        manage: true,
+        pictures: Rc::default(),
+        asked: Vec::new(),
+        clock: Rc::new(Cell::new(NOW)),
+    });
     let mut host = OsMotion(reduce);
     let mut h = Harness::builder().with_size(egui::vec2(1180.0, 500.0)).with_step_dt(1.0 / 60.0).with_max_steps(120).build_ui_state(
         move |ui, state: &mut Option<LauncherUi>| {
@@ -1827,6 +1843,82 @@ fn with_animations_on_hovering_a_card_animates() {
     // The rule wipes in and the icon rises over 0.3 s, at 60 frames a second.
     let frames = frames_to_hover_the_next_card(&mut h);
     assert!(frames >= 10, "{frames} frames");
+}
+
+#[test]
+fn control_wheel_zooms_the_main_ui() {
+    let (mut h, _) = harness(ViewMode::Grid, egui::Theme::Dark, true);
+    h.run_steps(4);
+    let before = h.ctx.zoom_factor();
+    h.input_mut().events.push(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        phase: egui::TouchPhase::Move,
+        delta: egui::vec2(0.0, 100.0),
+        modifiers: egui::Modifiers::COMMAND,
+    });
+    h.step();
+    h.run_steps(2);
+    assert!(h.ctx.zoom_factor() > before);
+}
+
+#[test]
+fn changelog_shortcuts_zoom_only_the_notes_text() {
+    let (mut h, _) = harness(ViewMode::Grid, egui::Theme::Dark, true);
+    h.run_steps(4);
+    h.get_all_by_label("…").next().unwrap().click();
+    h.run_steps(2);
+    h.get_by_label("Release notes").click();
+    h.run_steps(4);
+    let before = h.get_by_label("What's Changed").rect().height();
+    let global = h.ctx.zoom_factor();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Plus);
+    h.run_steps(3);
+    assert_eq!(h.ctx.zoom_factor(), global, "zooming notes must not resize the main UI");
+    assert!(h.get_by_label("What's Changed").rect().height() > before);
+
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Num0);
+    h.run_steps(3);
+    assert!((h.get_by_label("What's Changed").rect().height() - before).abs() < 0.5);
+    h.input_mut().events.push(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        phase: egui::TouchPhase::Move,
+        delta: egui::vec2(0.0, 100.0),
+        modifiers: egui::Modifiers::COMMAND,
+    });
+    h.step();
+    h.run_steps(2);
+    assert_eq!(h.ctx.zoom_factor(), global);
+    let larger = h.get_by_label("What's Changed").rect().height();
+    assert!(larger > before);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Minus);
+    h.run_steps(3);
+    assert!(h.get_by_label("What's Changed").rect().height() < larger);
+    snapshot(&mut h, "notes-zoomed");
+    h.get_by_label("Close").click();
+    h.run_steps(3);
+    assert_eq!(h.ctx.zoom_factor(), global);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Equals);
+    h.run_steps(3);
+    assert!(h.ctx.zoom_factor() > global, "main-UI keyboard zoom should still work after closing notes");
+}
+
+#[test]
+fn command_m_minimizes_the_mac_window_only() {
+    use artcraft_launcher_ui_egui::TitleBar;
+    for bar in [TitleBar::MacOs, TitleBar::Native, TitleBar::Custom] {
+        let (mut h, _) = harness_with_title_bar(events(), ViewMode::Grid, egui::Theme::Dark, true, 1.0, bar);
+        h.run_steps(4);
+        h.input_mut().events.push(egui::Event::Key {
+            key: egui::Key::M,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::MAC_CMD,
+        });
+        h.step();
+        let minimized = h.output().viewport_output.values().any(|v| v.commands.iter().any(|c| matches!(c, egui::ViewportCommand::Minimized(true))));
+        assert_eq!(minimized, bar == TitleBar::MacOs, "{bar:?}");
+    }
 }
 
 #[test]

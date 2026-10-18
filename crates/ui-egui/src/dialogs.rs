@@ -98,7 +98,7 @@ impl LauncherUi {
             if release.notes.is_empty() {
                 ui.label(tl!("These notes weren't fetched (GitHub's request limit was reached). They're on the release page."));
             } else {
-                crate::notes::show(ui, &release.notes);
+                crate::notes::show_scaled(ui, &release.notes, self.notes_zoom);
             }
         });
         ui.add_space(12.0);
@@ -372,7 +372,13 @@ impl LauncherUi {
                 ui.label(RichText::new(tl!("New installs use this folder. Updates stay in their current location.")).size(12.0).color(t.muted));
                 // Fork: the picked folder is also where the launcher looks for apps the user placed by
                 // hand, so a hand-built suite is used without being re-downloaded.
-                ui.label(RichText::new(tl!("New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder.")).size(12.0).color(t.muted));
+                ui.label(
+                    RichText::new(tl!(
+                        "New installs go here. Apps found here are the ones the launcher uses. Apps only found elsewhere keep their own folder."
+                    ))
+                    .size(12.0)
+                    .color(t.muted),
+                );
                 if self.platform.is_some_and(|p| p.os == Os::Linux) {
                     ui.label(RichText::new(tl!("Custom folders use AppImage on Linux.")).size(12.0).color(t.muted));
                 }
@@ -385,7 +391,7 @@ impl LauncherUi {
         // offers a picker on Linux; here the portable zip is the default, matching
         // `install::available_kinds()`, which puts it first.
         if self.caps.manage_apps && self.platform.is_some_and(|p| p.os == Os::Windows) {
-            section(ui, &fmt(tl!("Installing for {platform}"), &[("platform", &Os::Windows.label())]));
+            section(ui, &fmt(tl!("Installing for {platform}"), &[("platform", Os::Windows.label())]));
             let mut choice = self.settings.preferred_kinds.first().copied().or(Some(PackageKind::PortableZip));
             row(ui, tl!("Install new apps as"), 210.0, &mut |ui| {
                 let label = crate::i18n::t(choice.unwrap_or(PackageKind::PortableZip).label());
@@ -397,7 +403,6 @@ impl LauncherUi {
             });
             self.settings.preferred_kinds = choice.into_iter().collect();
             ui.label(RichText::new(tl!("Updates always use the format an app was installed with.")).size(12.0).color(t.muted));
-
         }
 
         if self.caps.manage_apps && self.platform.is_some_and(|p| p.os == Os::Linux) {
@@ -422,7 +427,7 @@ impl LauncherUi {
                     if !is_flatpak && !is_appimage {
                         ui.selectable_value(&mut choice, None, tl!("System package (recommended)"));
                     }
-                    for k in [PackageKind::Deb, PackageKind::Rpm, PackageKind::Flatpak, PackageKind::AppImage] {
+                    for k in [PackageKind::Deb, PackageKind::Rpm, PackageKind::ArchPkg, PackageKind::Flatpak, PackageKind::AppImage] {
                         ui.selectable_value(&mut choice, Some(k), crate::i18n::t(k.label()));
                     }
                     // The tarball is unpacked and run inside the launcher's own sandbox, so it
@@ -458,9 +463,9 @@ impl LauncherUi {
         ui.label(RichText::new(tl!("Questions, ideas and news from the ArtCraft team")).color(t.muted));
         ui.add_space(6.0);
         ui.horizontal_wrapped(|ui| {
-            use artcraft_launcher_core::catalog::{DISCORD_URL, GITHUB_URL, WEBSITE_URL};
-            if widgets::button(ui, tl!("Join the Discord"), Kind::Primary, 0.0).on_hover_text(DISCORD_URL).clicked() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
+            use artcraft_launcher_core::catalog::{GITHUB_URL, WEBSITE_URL};
+            if widgets::button(ui, tl!("Join the Discord"), Kind::Primary, 0.0).on_hover_text(self.discord_url).clicked() {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(self.discord_url));
             }
             if widgets::button(ui, tl!("Website"), Kind::Secondary, 0.0).on_hover_text(WEBSITE_URL).clicked() {
                 ui.ctx().open_url(egui::OpenUrl::new_tab(WEBSITE_URL));

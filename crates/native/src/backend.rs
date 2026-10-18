@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
 use artcraft_launcher_core::catalog::{LAUNCHER, LAUNCHER_ID};
@@ -66,6 +66,10 @@ struct Shared {
     last_check: Mutex<Option<i64>>,
     /// The newer Eternal Craft Launcher release, once a check has found one.
     launcher_release: Mutex<Option<Release>>,
+    /// How this launcher is installed, when it can replace itself. Worked out on the check thread
+    /// just before a newer launcher is announced: finding out can ask the host's Flatpak, which
+    /// mustn't hold up the first frame.
+    self_install: OnceLock<Option<crate::self_update::Install>>,
     /// When GitHub was last asked about each app (Unix seconds), to keep the fallback rare.
     github_asked: Mutex<HashMap<String, i64>>,
     /// Apps with an answer (a release or "none yet") from either service.
@@ -95,8 +99,6 @@ pub struct NativeBackend {
     http: Option<Http>,
     source: Option<Arc<dyn ReleaseSource>>,
     platform: Option<Platform>,
-    /// How this launcher is installed, when it can replace itself.
-    self_install: Option<crate::self_update::Install>,
 }
 
 impl NativeBackend {
@@ -128,6 +130,7 @@ impl NativeBackend {
             checking: AtomicBool::new(false),
             detecting: AtomicBool::new(false),
             launcher_release: Mutex::new(None),
+            self_install: OnceLock::new(),
             github_asked: Mutex::new(HashMap::new()),
             answered: Mutex::new(std::collections::HashSet::new()),
             loaded: AtomicBool::new(false),
@@ -137,7 +140,7 @@ impl NativeBackend {
             pictures_busy: Mutex::new(std::collections::HashSet::new()),
             last_check: Mutex::new(None),
         });
-        let backend = Self { shared, paths, http, source, platform: native_platform(), self_install: crate::self_update::current() };
+        let backend = Self { shared, paths, http, source, platform: native_platform() };
         backend.replay_cache();
         backend.detect_all();
         backend
@@ -294,6 +297,7 @@ impl NativeBackend {
                                     && version::is_newer(newest, &current)
                                     && !crate::self_update::just_updated_to(&paths, &r)
                                 {
+                                    shared.self_install.get_or_init(crate::self_update::current);
                                     *shared.launcher_release.lock().unwrap_or_else(PoisonError::into_inner) = Some(r.clone());
                                     shared.emit(Event::LauncherUpdate(r));
                                 }
@@ -435,7 +439,7 @@ impl NativeBackend {
     /// Downloads the newer launcher, puts it in place and asks the UI to quit so it can start.
     fn update_launcher(&self) {
         let id = LAUNCHER_ID.to_string();
-        let (Some(install), Some(platform)) = (self.self_install.clone(), self.platform) else {
+        let (Some(install), Some(platform)) = (self.shared.self_install.get().cloned().flatten(), self.platform) else {
             self.shared.emit(Event::JobFinished {
                 app: id,
                 result: Err("this copy of Eternal Craft Launcher can't update itself; download the new version instead".into()),
@@ -1031,13 +1035,8 @@ impl Backend for NativeBackend {
                     // Fork: the folder the user picked in Settings also decides where the launcher
                     // looks for apps, so a hand-built suite in it is used without being re-downloaded.
                     // Empty keeps the launcher's own folder, which is what a portable suite uses.
-                    self.paths.apps_override = options
-                        .install_locations
-                        .root
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|d| !d.is_empty())
-                        .map(std::path::PathBuf::from);
+                    self.paths.apps_override =
+                        options.install_locations.root.as_deref().map(str::trim).filter(|d| !d.is_empty()).map(std::path::PathBuf::from);
                     *o = options;
                     changed
                 };
@@ -1063,7 +1062,7 @@ impl Backend for NativeBackend {
             Some(Os::Windows) => "Show in Explorer",
             _ => "Show in Files",
         };
-        Capabilities { manage_apps: true, reveal_label, self_update: self.self_install.is_some() }
+        Capabilities { manage_apps: true, reveal_label, self_update: self.shared.self_install.get().is_some_and(Option::is_some) }
     }
 
     fn platform(&self) -> Option<Platform> {
@@ -1128,6 +1127,7 @@ mod tests {
             detecting: AtomicBool::new(false),
             last_check: Mutex::new(None),
             launcher_release: Mutex::new(None),
+            self_install: OnceLock::new(),
             github_asked: Mutex::new(HashMap::new()),
             answered: Mutex::new(std::collections::HashSet::new()),
             loaded: AtomicBool::new(false),
@@ -1385,7 +1385,7 @@ mod tests {
         let shared = shared();
         shared.latest.lock().unwrap().insert(APP.to_string(), release("0.5.0"));
         let shared = Arc::new(shared);
-        NativeBackend { shared, paths: Paths::under(root), http: None, source, platform: Some(platform), self_install: None }
+        NativeBackend { shared, paths: Paths::under(root), http: None, source, platform: Some(platform) }
     }
 
     /// Reports again, and returns what the UI was last told about a kept download.

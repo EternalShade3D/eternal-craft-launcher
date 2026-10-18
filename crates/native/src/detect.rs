@@ -93,12 +93,7 @@ pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
             let name = dir.file_name()?.to_string_lossy().to_string();
             let rest = name.strip_prefix(&format!("{}-", app.id)).unwrap_or(&name);
             let Some(version) = version::parse(rest.split('-').next().unwrap_or(rest)) else { continue };
-            found.push(Installed {
-                version: Some(version),
-                source: InstallSource::Launcher,
-                location: exe.display().to_string(),
-                package: None,
-            });
+            found.push(Installed { version: Some(version), source: InstallSource::Launcher, location: exe.display().to_string(), package: None });
         }
     }
     // The newest copy: a folder the user made can hold more than one version, and the filesystem
@@ -688,7 +683,14 @@ mod fork_tests {
         let mut manifest = Manifest::default();
         manifest.apps.insert(
             "cadcraft".into(),
-            crate::manifest::Record { version: "0.6.2".into(), kind: PackageKind::PortableZip, path: exe.clone(), installed_at: 1, files: vec![], needs_root: false },
+            crate::manifest::Record {
+                version: "0.6.2".into(),
+                kind: PackageKind::PortableZip,
+                path: exe.clone(),
+                installed_at: 1,
+                files: vec![],
+                needs_root: false,
+            },
         );
         let found = detect(app, &manifest, &Snapshot::default()).unwrap();
         assert_eq!(found.source, InstallSource::Launcher);
