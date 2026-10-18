@@ -671,6 +671,11 @@ mod tests {
 
 #[cfg(test)]
 mod fork_tests {
+    /// The file name `scan` looks for, so the tests say the same thing on every platform.
+    fn exe(id: &str) -> String {
+        if cfg!(windows) { format!("{id}.exe") } else { id.to_string() }
+    }
+
     use super::*;
     use artcraft_launcher_core::PackageKind;
 
@@ -705,20 +710,20 @@ mod fork_tests {
         // The way the launcher keeps apps: the uppercase app folder, the version folder inside it.
         let home = apps.join("PHOTOCRAFT").join("photocraft-0.6.2-windows-x64-portable");
         std::fs::create_dir_all(&home).unwrap();
-        std::fs::write(home.join("photocraft.exe"), "exe").unwrap();
+        std::fs::write(home.join(exe("photocraft")), "exe").unwrap();
         let found = scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap();
         assert_eq!(found.source, InstallSource::Launcher);
         assert_eq!(found.version.as_ref().map(|v| v.to_string()).unwrap(), "0.6.2");
-        assert_eq!(found.location, home.join("photocraft.exe").display().to_string());
+        assert_eq!(found.location, home.join(exe("photocraft")).display().to_string());
         // A folder the user made in lowercase is read too.
         let flat = apps.join("deckcraft").join("deckcraft-0.5.0");
         std::fs::create_dir_all(&flat).unwrap();
-        std::fs::write(flat.join("deckcraft.exe"), "exe").unwrap();
+        std::fs::write(flat.join(exe("deckcraft")), "exe").unwrap();
         assert_eq!(scan(CraftApp::by_id("deckcraft").unwrap(), &apps).unwrap().version.as_ref().map(|v| v.to_string()).unwrap(), "0.5.0");
         // A version folder sitting directly under the apps folder, with no app folder above it.
         let loose = apps.join("photocraft-0.7.1-windows-x64-portable");
         std::fs::create_dir_all(&loose).unwrap();
-        std::fs::write(loose.join("photocraft.exe"), "exe").unwrap();
+        std::fs::write(loose.join(exe("photocraft")), "exe").unwrap();
         assert_eq!(scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap().version.as_ref().map(|v| v.to_string()).unwrap(), "0.7.1");
         // A folder with no exe in it is not an install.
         std::fs::create_dir_all(apps.join("GRIDCRAFT").join("gridcraft-0.5.0")).unwrap();
@@ -734,7 +739,7 @@ mod fork_tests {
         for v in ["0.6.2", "0.7.1"] {
             let d = apps.join("PHOTOCRAFT").join(format!("photocraft-{v}-windows-x64-portable"));
             std::fs::create_dir_all(&d).unwrap();
-            std::fs::write(d.join("photocraft.exe"), "exe").unwrap();
+            std::fs::write(d.join(exe("photocraft")), "exe").unwrap();
         }
         let found = scan(CraftApp::by_id("photocraft").unwrap(), &apps).unwrap();
         assert_eq!(found.version.as_ref().map(|v| v.to_string()).unwrap(), "0.7.1");
