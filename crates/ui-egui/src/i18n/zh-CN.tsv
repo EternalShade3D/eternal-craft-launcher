@@ -315,7 +315,12 @@ figcraft	Interface design and prototyping	界面设计与原型制作
 @msg	{name} installed: {version} (this release publishes no checksum, so only its size was checked)	{name} 已安装：{version}（此版本未发布校验和，因此只检查了文件大小）
 @msg	{name} was removed	{name} 已卸载
 @msg	{name} is running. Quit it, then try again.	{name} 正在运行。请先退出，然后重试。
+@msg	{name} was installed from the {repo} repository or the AUR ({pkg}). Update it with {cmd} or sudo pacman -Syu	{name} 是从 {repo} 软件仓库或 AUR 安装的（{pkg}）。请使用 {cmd} 或 sudo pacman -Syu 更新。
+@msg	{name} was installed from the {repo} repository or the AUR ({pkg}). Update it with your AUR helper (for example: yay -S {pkg}) or sudo pacman -Syu	{name} 是从 {repo} 软件仓库或 AUR 安装的（{pkg}）。请使用您的 AUR 助手（例如：yay -S {pkg}）或 sudo pacman -Syu 更新。
+@msg	{name} was installed from the AUR ({pkg}). Update it with {cmd}	{name} 是从 AUR 安装的（{pkg}）。请使用 {cmd} 更新。
+@msg	{name} was installed from the AUR ({pkg}). Update it with your AUR helper (for example: yay -S {pkg})	{name} 是从 AUR 安装的（{pkg}）。请使用您的 AUR 助手（例如：yay -S {pkg}）更新。
 	Install folder	安装文件夹
+	Apps already in this folder are picked up without a reinstall.	此文件夹中已有的应用无需重新安装即可识别。
 	Default install folder	默认安装文件夹
 	System default	系统默认
 	Browse…	浏览…
@@ -332,3 +337,12 @@ figcraft	Interface design and prototyping	界面设计与原型制作
 	Replace what's there?	替换现有内容？
 	{path} already exists. Installing {name} will overwrite it.	{path} 已存在。安装 {name} 将覆盖它。
 	Replace	替换
+	Recently updated	最近更新
+	Name (A–Z)	名称 (A–Z)
+	Name (Z–A)	名称 (Z–A)
+	Frequently used	最常使用
+	Next app	下一个应用
+	Previous app	上一个应用
+	Show {n} more changes	显示另外 {n} 项更改
+	Last updated: {date}	最后更新：{date}
+column	Version	版本

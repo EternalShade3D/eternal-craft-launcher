@@ -659,7 +659,7 @@ fn planned_asset(
     } else if custom_linux {
         vec![artcraft_launcher_core::PackageKind::AppImage]
     } else {
-        install::choose_kinds(existing, record, &options.kinds)
+        install::choose_kinds(app, existing, record, &options.kinds)
     };
     pick_asset(release, &stems, platform, &kinds).map(|(a, k)| (a.clone(), k))
 }

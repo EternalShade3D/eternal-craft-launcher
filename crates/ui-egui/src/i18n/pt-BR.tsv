@@ -269,6 +269,10 @@ filter	Installed	Instalados
 @msg	{name} installed: {version} (this release publishes no checksum, so only its size was checked)	{name} instalado: {version} (este lançamento não publica soma de verificação, então apenas o tamanho foi verificado)
 @msg	{name} was removed	{name} foi removido
 @msg	{name} is running. Quit it, then try again.	{name} está em execução. Feche-o e tente novamente.
+@msg	{name} was installed from the {repo} repository or the AUR ({pkg}). Update it with {cmd} or sudo pacman -Syu	{name} foi instalado pelo repositório {repo} ou pelo AUR ({pkg}). Atualize-o com {cmd} ou com sudo pacman -Syu
+@msg	{name} was installed from the {repo} repository or the AUR ({pkg}). Update it with your AUR helper (for example: yay -S {pkg}) or sudo pacman -Syu	{name} foi instalado pelo repositório {repo} ou pelo AUR ({pkg}). Atualize-o com seu assistente do AUR (por exemplo: yay -S {pkg}) ou com sudo pacman -Syu
+@msg	{name} was installed from the AUR ({pkg}). Update it with {cmd}	{name} foi instalado pelo AUR ({pkg}). Atualize-o com {cmd}
+@msg	{name} was installed from the AUR ({pkg}). Update it with your AUR helper (for example: yay -S {pkg})	{name} foi instalado pelo AUR ({pkg}). Atualize-o com seu assistente do AUR (por exemplo: yay -S {pkg})
 
 # Command IDs for menu items (@id)
 # Format: @id<TAB>command_id<TAB>translation
@@ -336,6 +340,7 @@ filter	Installed	Instalados
 	Pictures couldn't be loaded. Reopen this page to try again.	Não foi possível carregar as imagens. Abra a página novamente para tentar de novo.
 @plural	Eternal Craft Launcher · {n} update available|Eternal Craft Launcher · {n} updates available	Eternal Craft Launcher · {n} atualização disponível|Eternal Craft Launcher · {n} atualizações disponíveis
 	Install folder	Pasta de instalação
+	Apps already in this folder are picked up without a reinstall.	Os apps que já estão nesta pasta são reconhecidos sem reinstalar.
 	Default install folder	Pasta de instalação padrão
 	System default	Padrão do sistema
 	Browse…	Procurar…
@@ -352,3 +357,12 @@ filter	Installed	Instalados
 	Replace what's there?	Substituir o que já existe?
 	{path} already exists. Installing {name} will overwrite it.	{path} já existe. Instalar o {name} vai substituí-lo.
 	Replace	Substituir
+	Recently updated	Atualizados recentemente
+	Name (A–Z)	Nome (A–Z)
+	Name (Z–A)	Nome (Z–A)
+	Frequently used	Mais usados
+	Next app	Próximo aplicativo
+	Previous app	Aplicativo anterior
+	Show {n} more changes	Mostrar mais {n} alterações
+	Last updated: {date}	Última atualização: {date}
+column	Version	Versão

@@ -26,6 +26,13 @@ skrifa = { version = "0.44", default-features = false, features = ["std"] }
 # Fork: the Settings row that picks the install folder uses the OS's own folder dialog. The web
 # build has no folder dialog, so it is desktop only and the row shows just the text field there.
 rfd = "0.17.2"
+# The system time zone, so dates read as this computer's calendar; already in the desktop build.
+jiff = "0.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# The browser's time zone, for the same dates.
+js-sys = "0.3"
+wasm-bindgen = "0.2"
 
 [dev-dependencies]
 serde_json = { workspace = true }
