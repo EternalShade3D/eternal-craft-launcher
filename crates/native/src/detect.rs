@@ -106,15 +106,22 @@ pub fn scan(app: &CraftApp, apps: &Path) -> Option<Installed> {
 /// folder Settings points at is what the user asked for, so a copy found there wins over a record
 /// or an installer registry entry. Without a picked folder the usual order stands: the launcher's
 /// own record, then the system.
+/// Two paths that name the same file: the same text once the `\\?\` prefix, trailing separators and
+/// letter case are levelled. `portable` is Windows only, so this lives here.
+fn same_file(left: &str, right: &str) -> bool {
+    fn normalized(path: &str) -> String {
+        path.strip_prefix(r"\\?\").unwrap_or(path).trim_end_matches(['\\', '/']).to_lowercase()
+    }
+    normalized(left) == normalized(right)
+}
+
 pub fn pick(picked: Option<Installed>, other: Option<Installed>) -> Option<Installed> {
     match (picked, other) {
         (Some(mut picked), Some(other)) => {
             // The same exe: the record knows the version that is really installed. The folder name
             // is only a hint, and an in-place update leaves it saying the version it was named for
             // the first time, which made the launcher report the old version and offer it again.
-            if other.version.is_some()
-                && crate::portable::same_windows_path(std::path::Path::new(&picked.location), std::path::Path::new(&other.location))
-            {
+            if other.version.is_some() && same_file(&picked.location, &other.location) {
                 picked.version = other.version;
             }
             Some(picked)
