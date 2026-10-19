@@ -478,7 +478,6 @@ pub fn glyph_button(ui: &mut Ui, glyph: Glyph, tip: &str) -> Response {
     resp.on_hover_text(tip).on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
-/// The "…" button that opens an app's menu: an outlined square like [`glyph_button`].
 /// A menu row: an icon, the label, and a full-width hover. A screen reader hears only `label`, so
 /// the icon is decoration and anything looking for the row still finds it by its words.
 pub fn menu_item(ui: &mut Ui, icon: &str, label: &str, colour: Option<Color32>) -> Response {
@@ -490,14 +489,17 @@ pub fn menu_item(ui: &mut Ui, icon: &str, label: &str, colour: Option<Color32>) 
     // the English it was written from, and a label that runs past the row cannot be clicked.
     let label_width = ui.painter().layout_no_wrap(label.to_owned(), font.clone(), ink).size().x;
     let needed = 28.0 + label_width.ceil() + 16.0;
-    // A menu measures its content before it has a width, so `available_width` can be huge or tiny
-    // on the first pass; 200 is the floor `more_menu` asks for.
-    let available = ui.available_width();
-    let width = if available.is_finite() { available.max(needed.max(200.0)) } else { needed.max(200.0) };
+    // The row is exactly as wide as it needs to be, never as wide as the menu could be: asking for
+    // `available_width` here inflates the popup, because a menu is measured before it has a width.
+    // 200 is the floor `more_menu` already asks for, so short labels keep the old look.
+    let width = needed.max(200.0);
     let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::click());
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
     if response.hovered() || response.has_focus() {
-        ui.painter().rect_filled(rect, CornerRadius::ZERO, t.sunken);
+        // The hover fills the row and runs on to the edge of the menu, so it does not stop short
+        // of the panel and look like a second, smaller button.
+        let span = egui::Rect::from_min_max(egui::pos2(ui.max_rect().left(), rect.top()), egui::pos2(ui.max_rect().right(), rect.bottom()));
+        ui.painter().rect_filled(span, CornerRadius::ZERO, t.sunken);
     }
     let middle = egui::pos2(rect.left() + 14.0, rect.center().y);
     if let Some(source) = crate::icons::menu(icon) {
@@ -508,6 +510,7 @@ pub fn menu_item(ui: &mut Ui, icon: &str, label: &str, colour: Option<Color32>) 
     response
 }
 
+/// The "…" button that opens an app's menu: an outlined square like [`glyph_button`].
 pub fn more_menu<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) {
     let t = Tokens::get(ui.ctx());
     let btn =
