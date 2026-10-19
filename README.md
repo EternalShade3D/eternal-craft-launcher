@@ -9,6 +9,8 @@ Download the zip, unzip it, run `eternal-craft-launcher.exe`. Settings has a row
 installs go. Apps you put in that folder by hand are picked up as well, and that folder is the one
 the launcher uses when the same app also exists somewhere else.
 
+![The fork's Settings: where new installs go, and the portable zip as the Windows default](docs/screenshots/eternal-launcher-settings.png)
+
 ---
 
 ## What is different from the original
@@ -28,6 +30,7 @@ the launcher uses when the same app also exists somewhere else.
 | 11 | Self-update reads this fork's releases, not upstream's | `crates/native/src/self_update.rs` |
 | 12 | The settings file goes inside the portable folder, so a suite on a stick keeps its settings on another computer | `apps/artcraft-launcher/src/settings_file.rs`, `apps/artcraft-launcher/src/main.rs` |
 | 13 | Tests: 4 native + 2 UI + 1 app | `crates/native/src/{install,detect,paths}.rs`, `crates/ui-egui/tests/ui.rs`, `apps/artcraft-launcher/src/settings_file.rs` |
+| 14 | Every row of an app's `...` menu starts with an icon (Lucide, ISC), grey on most rows and red on Uninstall | `crates/ui-egui/src/widgets.rs`, `crates/ui-egui/src/icons.rs`, `assets/icons/` |
 
 Diff against upstream: 110 files, +1371 / -476 (code only: 64 files, +1023 / -359).
 
