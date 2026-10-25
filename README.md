@@ -44,6 +44,10 @@ See [FORK.md](FORK.md) for the full list with the exact code, the behaviour rule
 
 ## The original project
 
+<p align="center">
+  <img src="assets/app-icon/hicolor/256x256/apps/ai.storyteller.artcraft-launcher.png" width="128" height="128" alt="ArtCraft Launcher icon: a blue stylised letter A">
+</p>
+
 <h1 align="center">ArtCraft Launcher</h1>
 
 <p align="center">

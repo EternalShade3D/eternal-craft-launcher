@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-/// Where the settings file is. In portable mode it is inside `EternalCraftLauncherData`, so a suite
+/// Where the settings file is. In portable mode it is inside `ArtCraftLauncherData`, so a suite
 /// carried on a stick keeps its settings when it is plugged into another computer. Without
 /// `portable.txt` it is eframe's own folder, which is in the user's profile and cannot travel.
 pub fn path(app_id: &str) -> Option<PathBuf> {
@@ -17,7 +17,7 @@ pub fn path(app_id: &str) -> Option<PathBuf> {
         .or_else(|| eframe::storage_dir(app_id).map(|dir| dir.join("app.ron")))
 }
 
-/// The settings file inside a portable suite: `<suite>\data\app.ron`.
+/// The settings file inside a portable suite: the same `data` folder `Paths` already uses.
 fn portable_settings(root: &Path) -> PathBuf {
     root.join("data").join("app.ron")
 }
@@ -102,11 +102,9 @@ mod tests {
 
     #[test]
     fn a_portable_suite_keeps_its_settings_inside_itself() {
-        // Built with `join`, so the test says the same thing on Windows and on Linux.
-        let root = std::env::temp_dir().join("EternalCraftLauncherData");
-        let path = portable_settings(&root);
-        assert_eq!(path.file_name().and_then(|n| n.to_str()), Some("app.ron"));
-        assert_eq!(path.parent(), Some(root.join("data").as_path()));
+        // Built with `join` so the test reads the same on Windows and on Linux CI.
+        let root = PathBuf::from("Suite").join("ArtCraftLauncherData");
+        assert_eq!(portable_settings(&root), root.join("data").join("app.ron"));
     }
 
     #[test]

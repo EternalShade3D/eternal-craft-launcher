@@ -393,7 +393,7 @@ fn relaunch_flatpak_after_exit() -> Result<(), String> {
             id,
         ),
         // Without either, starting it again could only meet the old copy still running.
-        (None, None) => return Err("ArtCraft Launcher is updated; quit and reopen it to start the new version".into()),
+        (None, None) => return Err("Eternal Craft Launcher is updated; quit and reopen it to start the new version".into()),
     };
     let script = format!("({wait_clause}) &");
     let app_id = LAUNCHER.bundle_id();

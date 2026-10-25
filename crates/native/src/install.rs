@@ -81,6 +81,7 @@ pub fn install_at(
     {
         return Err(format!("{} is running. Quit it, then try again.", app.name));
     }
+    bind_artifact_version(app, release, asset)?;
     if !job.replace
         && let Some(inst) = existing
         && let (Some(rel_v), Some(inst_v)) = (release.version.as_ref(), inst.version.as_ref())
@@ -145,6 +146,45 @@ pub fn install_at(
     }
     // The system's own prompt was dismissed: the download itself wasn't cancelled.
     result.map_err(|e| if e == CANCELLED { INSTALL_CANCELLED.to_string() } else { e })
+}
+
+/// Rejects an artifact whose own identity disagrees with the release that authorized it.
+///
+/// A feed or GitHub converter supplies the release version, the asset filename, and the download
+/// URL independently. The downgrade guard and the persisted record both trust `release.version`,
+/// so a controller could advertise a new version while pointing at an older official artifact —
+/// bypassing the guard and recording a false installed version (finding: version not bound to the
+/// release). We require the version encoded in the asset filename and the release tag embedded in
+/// the download URL to agree with the release version before any bytes are fetched.
+pub(crate) fn bind_artifact_version(app: &CraftApp, release: &Release, asset: &Asset) -> Result<(), String> {
+    let mismatch = || format!("{}'s download does not match the advertised version {}.", app.name, release.version_label());
+    let release_version = release.version.as_ref();
+
+    // The version in the asset filename (`<stem>-<version>-<os>-<arch>.<ext>`), when it carries one.
+    let stems: Vec<&str> = app.stems().collect();
+    if let Some(release_version) = release_version
+        && let Some(parsed) = artcraft_launcher_core::platform::parse_asset_name(&asset.name, &stems)
+        && version::parse(&parsed.version).as_ref() != Some(release_version)
+    {
+        return Err(mismatch());
+    }
+
+    // The release tag and filename embedded in a release download URL (`.../releases/download/<tag>/<name>`).
+    if let Some(rest) = asset.url.split("/releases/download/").nth(1) {
+        let mut parts = rest.split('/');
+        let tag = parts.next().unwrap_or("");
+        let url_filename = parts.next().unwrap_or("");
+        if tag.is_empty()
+            || release_version
+                .map_or(tag != release.tag, |release_version| tag != release.tag && version::parse(tag).as_ref() != Some(release_version))
+        {
+            return Err(mismatch());
+        }
+        if !url_filename.is_empty() && url_filename != asset.name {
+            return Err(format!("{}'s download URL filename does not match selected asset {}.", app.name, asset.name));
+        }
+    }
+    Ok(())
 }
 
 /// What a new install would write over: something already at its destination that the launcher
@@ -302,7 +342,7 @@ pub(crate) fn choose_kinds_with(
 /// Whether this system has a working pacman installation and pacman database.
 fn can_pacman() -> bool {
     #[cfg(target_os = "linux")]
-    return which("pacman").is_some() && crate::detect::linux::has_pacman_db();
+    return find_in(&SYSTEM_BIN_DIRS, std::ffi::OsStr::new("pacman")).is_some() && crate::detect::linux::has_pacman_db();
     #[cfg(not(target_os = "linux"))]
     return false;
 }
@@ -320,7 +360,7 @@ pub fn available_kinds() -> Vec<PackageKind> {
     #[cfg(target_os = "macos")]
     return vec![PackageKind::Dmg];
     #[cfg(windows)]
-    return vec![PackageKind::Msi, PackageKind::PortableZip];
+    return vec![PackageKind::PortableZip, PackageKind::Msi];
     #[cfg(target_os = "linux")]
     return linux::available_kinds();
     #[cfg(target_os = "freebsd")]
@@ -630,7 +670,7 @@ fn swap_into_place_via(staged: &Path, dest: &Path, rename: impl Fn(&Path, &Path)
 fn single_top_folder(dir: &Path) -> Result<PathBuf, String> {
     let entries: Vec<_> = std::fs::read_dir(dir).map_err(|e| e.to_string())?.flatten().collect();
     match entries.as_slice() {
-        [only] if only.path().is_dir() => Ok(only.path()),
+        [only] if only.file_type().is_ok_and(|ft| ft.is_dir() && !ft.is_symlink()) => Ok(only.path()),
         _ => Ok(dir.to_path_buf()),
     }
 }
@@ -649,11 +689,47 @@ fn which(name: &str) -> Option<PathBuf> {
     std::env::split_paths(&path).map(|d| d.join(name)).find(|p| p.is_file())
 }
 
+/// The root-owned directories that programs run as root come from. `pkexec` looks a bare program
+/// name up on the caller's `PATH`, so it is always handed an absolute path from one of these.
+#[cfg(target_os = "linux")]
+const SYSTEM_BIN_DIRS: [&str; 4] = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"];
+/// FreeBSD's packages, polkit's `pkexec` among them, install under `/usr/local`.
+#[cfg(target_os = "freebsd")]
+const SYSTEM_BIN_DIRS: [&str; 6] = ["/usr/bin", "/bin", "/usr/sbin", "/sbin", "/usr/local/bin", "/usr/local/sbin"];
+
+/// `name` in the first of `dirs` that has it.
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+fn find_in(dirs: &[impl AsRef<Path>], name: &std::ffi::OsStr) -> Option<PathBuf> {
+    dirs.iter().map(|d| d.as_ref().join(name)).find(|p| p.is_file())
+}
+
+/// `args` with its program as an absolute path: a bare name is looked up in `dirs`.
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+fn with_absolute_program(dirs: &[impl AsRef<Path>], args: &[&std::ffi::OsStr]) -> Result<Vec<std::ffi::OsString>, String> {
+    let (program, rest) = args.split_first().ok_or("there is no command to run")?;
+    let path = Path::new(program);
+    let program = if path.is_absolute() {
+        path.to_path_buf()
+    } else if path.file_name() == Some(*program) {
+        find_in(dirs, program).ok_or_else(|| format!("{} isn't installed", path.display()))?
+    } else {
+        return Err(format!("{} isn't a program name", path.display()));
+    };
+    Ok(std::iter::once(program.into_os_string()).chain(rest.iter().map(|a| a.to_os_string())).collect())
+}
+
+/// polkit's `pkexec`, from the same directories as the programs it runs.
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+fn pkexec() -> Option<PathBuf> {
+    find_in(&SYSTEM_BIN_DIRS, std::ffi::OsStr::new("pkexec"))
+}
+
 /// Runs a command as root through polkit (`pkexec`), which shows the desktop's password prompt.
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn run_as_root(args: &[&std::ffi::OsStr]) -> Result<(), String> {
-    let pkexec = which("pkexec").ok_or("installing system-wide needs polkit (pkexec), which isn't installed")?;
-    let status = process::command(pkexec).args(args).status().map_err(|e| format!("couldn't ask for permission ({e})"))?;
+    let args = with_absolute_program(&SYSTEM_BIN_DIRS, args)?;
+    let pkexec = pkexec().ok_or("installing system-wide needs polkit (pkexec), which isn't installed")?;
+    let status = process::command(pkexec).args(&args).status().map_err(|e| format!("couldn't ask for permission ({e})"))?;
     root_outcome(status.code())
 }
 
@@ -703,11 +779,19 @@ pub(crate) mod linux {
     use artcraft_launcher_core::distro;
     use artcraft_launcher_core::protocol::CANCELLED;
 
-    use super::*;
+    use super::{
+        CraftApp, INSTALLER, InstallSource, Installed, JobPhase, PackageKind, Path, PathBuf, Paths, Record, SHARED_CALL, SYSTEM_BIN_DIRS, Stop,
+        cancelled, find_in, pkexec, process, run_as_root, swap_into_place, tree, turn,
+    };
 
     /// apt waits this long for another package tool (a software centre, automatic updates) to
     /// let go of its lock, instead of failing at once.
     const APT_WAITS: &str = "DPkg::Lock::Timeout=60";
+
+    /// A package tool that root commands can run, from the same directories `run_as_root` uses.
+    fn system_tool(name: &str) -> Option<PathBuf> {
+        find_in(&SYSTEM_BIN_DIRS, OsStr::new(name))
+    }
 
     /// Where commands that need root go: the installer's queue, then `pkexec`.
     pub struct Root<'a> {
@@ -748,8 +832,8 @@ pub(crate) mod linux {
         match kind {
             // apt resolves dependencies and records the package like any other.
             PackageKind::Deb => Some(&["apt-get", "-o", APT_WAITS, "install", "-y", "--allow-downgrades"]),
-            PackageKind::Rpm if which("dnf").is_some() => Some(&["dnf", "install", "-y"]),
-            PackageKind::Rpm if which("zypper").is_some() => Some(&["zypper", "--non-interactive", "install", "--allow-unsigned-rpm"]),
+            PackageKind::Rpm if system_tool("dnf").is_some() => Some(&["dnf", "install", "-y"]),
+            PackageKind::Rpm if system_tool("zypper").is_some() => Some(&["zypper", "--non-interactive", "install", "--allow-unsigned-rpm"]),
             PackageKind::Rpm => Some(&["rpm", "-U", "--replacepkgs"]),
             PackageKind::ArchPkg => Some(&["pacman", "-U", "--noconfirm"]),
             _ => None,
@@ -778,14 +862,14 @@ pub(crate) mod linux {
         let flatpak = process::is_flatpak_available();
         let is_flatpak = process::in_sandbox();
         let is_appimage = std::env::var_os("APPIMAGE").is_some();
-        let root = which("pkexec").is_some();
+        let root = pkexec().is_some();
         let os = ["/etc/os-release", "/usr/lib/os-release"].iter().find_map(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
         let native = distro::native_package(&distro::parse_os_release(&os));
         // An ostree system can't take .deb or .rpm installs, whatever os-release says.
         let root = root && !immutable_ostree();
-        let can_deb = root && native == Some(PackageKind::Deb) && which("apt-get").is_some() && which("dpkg").is_some();
-        let can_rpm = root && native == Some(PackageKind::Rpm) && which("rpm").is_some();
-        let can_arch = root && native == Some(PackageKind::ArchPkg) && which("pacman").is_some() && crate::detect::linux::has_pacman_db();
+        let can_deb = root && native == Some(PackageKind::Deb) && system_tool("apt-get").is_some() && system_tool("dpkg").is_some();
+        let can_rpm = root && native == Some(PackageKind::Rpm) && system_tool("rpm").is_some();
+        let can_arch = root && native == Some(PackageKind::ArchPkg) && system_tool("pacman").is_some() && crate::detect::linux::has_pacman_db();
         order_available_kinds(is_flatpak, is_appimage, flatpak, can_deb, can_rpm, can_arch)
     }
 
@@ -831,10 +915,10 @@ pub(crate) mod linux {
 
     /// Installs (or upgrades) a downloaded package with the system's own tools.
     pub fn install_package(kind: PackageKind, file: &Path, stop: &Stop, phase: &mut dyn FnMut(JobPhase)) -> Result<(), String> {
-        if kind == PackageKind::Deb && which("apt-get").is_none() {
+        if kind == PackageKind::Deb && system_tool("apt-get").is_none() {
             return Err("this system has no apt-get to install a Debian package with".into());
         }
-        if kind == PackageKind::ArchPkg && which("pacman").is_none() {
+        if kind == PackageKind::ArchPkg && system_tool("pacman").is_none() {
             return Err("this system has no pacman to install an Arch package with".into());
         }
         install_package_via(&SYSTEM, kind, file, stop, phase)
@@ -878,10 +962,10 @@ pub(crate) mod linux {
     pub fn remove_package(app: &CraftApp, installed: &Installed, stop: &Stop, phase: &mut dyn FnMut(JobPhase)) -> Result<(), String> {
         let mut remove = |command: &[&str], package: &str| as_root(&SYSTEM, command, OsStr::new(package), stop, phase, JobPhase::Removing);
         match installed.source {
-            InstallSource::Deb if which("apt-get").is_some() => remove(&["apt-get", "-o", APT_WAITS, "remove", "-y"], app.id),
+            InstallSource::Deb if system_tool("apt-get").is_some() => remove(&["apt-get", "-o", APT_WAITS, "remove", "-y"], app.id),
             InstallSource::Deb => remove(&["dpkg", "-r"], app.id),
             InstallSource::Rpm => {
-                if which("dnf").is_some() {
+                if system_tool("dnf").is_some() {
                     remove(&["dnf", "remove", "-y"], app.id)
                 } else {
                     remove(&["rpm", "-e"], app.id)
@@ -926,12 +1010,14 @@ pub(crate) mod linux {
         let dest = dir.join(name);
         let ours = previous.is_some_and(|r| r.kind == PackageKind::AppImage && r.path == dest);
         if std::fs::symlink_metadata(&dest).is_ok_and(|m| m.is_dir() || !(replace || ours && m.is_file())) {
-            return Err(format!("{} already exists and wasn't installed by ArtCraft Launcher", dest.display()));
+            return Err(format!("{} already exists and wasn't installed by Eternal Craft Launcher", dest.display()));
         }
         let staging = super::staging_dir(&dir)?;
         let partial = staging.path().join(name);
         std::fs::copy(file, &partial).map_err(|e| format!("couldn't copy the AppImage ({e})"))?;
-        std::fs::set_permissions(&partial, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+        // The AppImage is the program the user just installed and must be executable; 0o755 is
+        // not group/world-writable.
+        std::fs::set_permissions(&partial, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?; // NOSONAR
         std::fs::rename(&partial, &dest).map_err(|e| format!("couldn't put the AppImage in place ({e})"))?;
         let mut removed = Vec::new();
         if let Some(old) = previous.filter(|r| r.kind == PackageKind::AppImage && r.path != dest)
@@ -956,6 +1042,20 @@ pub(crate) mod linux {
 
     fn unpack_tree(app: &CraftApp, file: &Path, staged: &Path, paths: &Paths) -> Result<PathBuf, String> {
         let tree = tree::unpack(app, file, staged)?;
+        // Verify tree root is strictly within staged and is not a symlink (CWE-59).
+        let rel_tree = tree.strip_prefix(staged).map_err(|_| "staging layout escapes staging".to_string())?;
+        let mut check_root = staged.to_path_buf();
+        for part in rel_tree.components() {
+            check_root.push(part);
+            let meta = std::fs::symlink_metadata(&check_root).map_err(|e| format!("couldn't check {} ({e})", check_root.display()))?;
+            if meta.file_type().is_symlink() {
+                return Err("unpacked tree root is a symlink".into());
+            }
+        }
+        // Validate the staged binary and set its mode *before* either swap: a rejected update
+        // (e.g. a symlinked app binary) must never disturb the installed tree it replaces.
+        let staged_bin = tree.join("bin").join(app.id);
+        make_runnable_within(&tree, &staged_bin)?;
         let root = paths.apps().join(app.id);
         std::fs::create_dir_all(&root).map_err(|e| format!("couldn't create {} ({e})", root.display()))?;
         for dir in ["bin", "share"] {
@@ -963,10 +1063,40 @@ pub(crate) mod linux {
                 swap_into_place(&tree.join(dir), &root.join(dir))?;
             }
         }
-        let bin = root.join("bin").join(app.id);
-        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755))
-            .map_err(|e| format!("couldn't make {} runnable ({e})", bin.display()))?;
-        Ok(bin)
+        Ok(root.join("bin").join(app.id))
+    }
+
+    /// Makes `bin` executable (0755) without ever following an archive-controlled symlink out of
+    /// the installation tree.
+    ///
+    /// `bin` comes from an untrusted tarball. If it, or one of its ancestors inside `root`, is a
+    /// symlink, a plain `std::fs::set_permissions(bin, …)` would follow the link and change the
+    /// mode of an existing file *outside* the tree (CWE-59). We reject any symlinked component
+    /// before changing permissions, so the chmod can only ever reach a regular file that lives at
+    /// the verified path inside the launcher's own apps folder.
+    fn make_runnable_within(root: &Path, bin: &Path) -> Result<(), String> {
+        let root_meta = std::fs::symlink_metadata(root).map_err(|e| format!("couldn't check {} ({e})", root.display()))?;
+        if root_meta.file_type().is_symlink() {
+            return Err("the install tree root is a symlink".into());
+        }
+        // No component between `root` and `bin` may be a symlink.
+        let rel = bin.strip_prefix(root).map_err(|_| "the app binary isn't inside the install tree".to_string())?;
+        let mut here = root.to_path_buf();
+        for part in rel.components() {
+            here.push(part);
+            let meta = std::fs::symlink_metadata(&here).map_err(|e| format!("couldn't check {} ({e})", here.display()))?;
+            if meta.file_type().is_symlink() {
+                return Err("the download's app binary escapes the install tree through a symlink".into());
+            }
+        }
+        // The final component is a verified non-symlink regular file inside the launcher's own
+        // apps folder, so changing its mode cannot reach anything outside the tree.
+        if !here.metadata().map_err(|e| e.to_string())?.file_type().is_file() {
+            return Err("the download's app binary isn't a regular file".into());
+        }
+        // Verified non-symlink regular file inside the launcher's apps folder; the app binary must
+        // be executable and 0o755 is not group/world-writable.
+        std::fs::set_permissions(bin, std::fs::Permissions::from_mode(0o755)).map_err(|e| format!("couldn't make {} runnable ({e})", bin.display())) // NOSONAR
     }
 
     /// Removes a tree the launcher unpacked in [`install_tree`], keeping the app's `home/`: the
@@ -999,22 +1129,7 @@ pub(crate) mod linux {
 
     /// The app's 128 px icon, as bundled in `assets/app-icons`.
     fn icon_png(app: &CraftApp) -> Option<&'static [u8]> {
-        Some(match app.id {
-            "photocraft" => include_bytes!("../../../assets/app-icons/photocraft.png"),
-            "vectorcraft" => include_bytes!("../../../assets/app-icons/vectorcraft.png"),
-            "filmcraft" => include_bytes!("../../../assets/app-icons/filmcraft.png"),
-            "lightcraft" => include_bytes!("../../../assets/app-icons/lightcraft.png"),
-            "pdfcraft" => include_bytes!("../../../assets/app-icons/pdfcraft.png"),
-            "effectcraft" => include_bytes!("../../../assets/app-icons/effectcraft.png"),
-            "designcraft" => include_bytes!("../../../assets/app-icons/designcraft.png"),
-            "wordcraft" => include_bytes!("../../../assets/app-icons/wordcraft.png"),
-            "deckcraft" => include_bytes!("../../../assets/app-icons/deckcraft.png"),
-            "gridcraft" => include_bytes!("../../../assets/app-icons/gridcraft.png"),
-            "cadcraft" => include_bytes!("../../../assets/app-icons/cadcraft.png"),
-            "soundcraft" => include_bytes!("../../../assets/app-icons/soundcraft.png"),
-            "figcraft" => include_bytes!("../../../assets/app-icons/figcraft.png"),
-            _ => return None,
-        })
+        artcraft_launcher_core::catalog::app_icon_png(app.id)
     }
 
     fn desktop_path(data: &Path, app: &CraftApp) -> PathBuf {
@@ -1112,7 +1227,7 @@ pub mod macos {
 
     use artcraft_launcher_core::version::Version;
 
-    use super::*;
+    use super::{CraftApp, InstallSource, Installed, Path, PathBuf, Paths, Release, process, staging_dir, swap_into_place};
 
     /// `/Applications` when we can write there, else `~/Applications`.
     fn applications_dir(existing: Option<&Installed>, destination: Option<&Path>) -> Result<PathBuf, String> {
@@ -1235,7 +1350,7 @@ pub mod macos {
             && std::fs::symlink_metadata(&dest).is_ok()
             && (std::fs::symlink_metadata(&dest).is_ok_and(|m| m.file_type().is_symlink()) || crate::detect::macos::read_bundle(app, &dest).is_none())
         {
-            return Err(format!("{} already exists and wasn't installed by ArtCraft Launcher", dest.display()));
+            return Err(format!("{} already exists and wasn't installed by Eternal Craft Launcher", dest.display()));
         }
         let staging = super::staging_dir(&dir)?;
         let staged = staging.path().join(&bundle);
@@ -1314,7 +1429,7 @@ pub mod macos {
 #[cfg(unix)]
 #[allow(dead_code)]
 mod tree {
-    use super::*;
+    use super::{CraftApp, Path, PathBuf, single_top_folder};
 
     /// Unpacks `file` and returns a staging folder laid out like `/usr/local`.
     pub fn unpack(app: &CraftApp, file: &Path, staging: &Path) -> Result<PathBuf, String> {
@@ -1323,14 +1438,50 @@ mod tree {
         let gz = std::fs::File::open(file).map_err(|e| e.to_string())?;
         let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(gz));
         archive.set_preserve_permissions(true);
-        // `unpack` refuses entries that would land outside `staging` (`..`, absolute paths).
-        archive.unpack(staging).map_err(|e| format!("couldn't unpack the download ({e})"))?;
+        // Bound entry count and cumulative unpacked bytes to prevent decompression bombs (CWE-409).
+        const MAX_ENTRIES: usize = 50_000;
+        const MAX_UNPACKED_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+        let mut entry_count = 0;
+        let mut total_unpacked = 0u64;
+        let mut directories = Vec::new();
+        let entries = archive.entries().map_err(|e| format!("couldn't read archive entries ({e})"))?;
+        for entry in entries {
+            let mut entry = entry.map_err(|e| format!("invalid tar entry ({e})"))?;
+            entry_count += 1;
+            if entry_count > MAX_ENTRIES {
+                return Err("archive has too many entries".into());
+            }
+            let size = entry.size();
+            total_unpacked = total_unpacked.saturating_add(size);
+            if total_unpacked > MAX_UNPACKED_BYTES {
+                return Err("archive exceeds maximum unpacked size".into());
+            }
+            if entry.header().entry_type().is_dir() {
+                directories.push(entry);
+            } else {
+                entry.unpack_in(staging).map_err(|e| format!("couldn't unpack archive entry ({e})"))?;
+            }
+        }
+        // Delay directory entries until child entries are written so restrictive modes do not break child extraction.
+        directories.sort_by(|a, b| b.path_bytes().cmp(&a.path_bytes()));
+        for mut dir in directories {
+            dir.unpack_in(staging).map_err(|e| format!("couldn't unpack archive directory ({e})"))?;
+        }
         let top = single_top_folder(staging)?;
         if top.join("bin").join(app.id).is_file() {
             return Ok(top);
         }
         // Flat layout: put each file where /usr/local keeps it.
+        // Ensure tree is a fresh directory and not an archive-created symlink or directory (CWE-59).
         let tree = staging.join("tree");
+        if let Ok(m) = std::fs::symlink_metadata(&tree) {
+            if m.file_type().is_symlink() || !m.is_dir() {
+                let _ = std::fs::remove_file(&tree);
+            } else {
+                let _ = std::fs::remove_dir_all(&tree);
+            }
+        }
+        std::fs::create_dir_all(&tree).map_err(|e| e.to_string())?;
         let id = app.bundle_id();
         for (from, to) in [
             (top.join(app.id), tree.join("bin").join(app.id)),
@@ -1338,8 +1489,18 @@ mod tree {
             (top.join(format!("{id}.desktop")), tree.join("share/applications").join(format!("{id}.desktop"))),
             (top.join(format!("{id}.png")), tree.join("share/pixmaps").join(format!("{id}.png"))),
         ] {
-            if from.is_file() {
+            if std::fs::symlink_metadata(&from).is_ok_and(|m| m.file_type().is_file()) {
                 if let Some(dir) = to.parent() {
+                    let rel = dir.strip_prefix(&tree).map_err(|_| "destination escapes staging tree".to_string())?;
+                    let mut check = tree.clone();
+                    for part in rel.components() {
+                        check.push(part);
+                        if let Ok(m) = std::fs::symlink_metadata(&check)
+                            && m.file_type().is_symlink()
+                        {
+                            return Err("destination parent directory is a symlink".into());
+                        }
+                    }
                     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
                 }
                 std::fs::rename(&from, &to).map_err(|e| e.to_string())?;
@@ -1351,22 +1512,32 @@ mod tree {
         Ok(tree)
     }
 
-    /// Every file under `root`, relative to it.
-    pub fn files(root: &Path) -> Vec<PathBuf> {
+    /// Every file under `root`, relative to it. Does not descend through symlinks (CWE-59, CWE-400).
+    pub fn files(root: &Path) -> Result<Vec<PathBuf>, String> {
         let mut out = Vec::new();
         let mut stack = vec![root.to_path_buf()];
+        let mut visited = 0;
+        const MAX_FILES: usize = 50_000;
         while let Some(dir) = stack.pop() {
-            for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let entries = std::fs::read_dir(&dir).map_err(|e| format!("couldn't read directory {}: {e}", dir.display()))?;
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("couldn't read directory entry: {e}"))?;
+                visited += 1;
+                if visited > MAX_FILES {
+                    return Err("directory tree exceeds maximum file limit of 50,000".into());
+                }
+                let ft = entry.file_type().map_err(|e| format!("couldn't read file type: {e}"))?;
                 let p = entry.path();
-                if p.is_dir() {
+                if ft.is_dir() && !ft.is_symlink() {
                     stack.push(p);
-                } else if let Ok(rel) = p.strip_prefix(root) {
+                } else {
+                    let rel = p.strip_prefix(root).map_err(|e| e.to_string())?;
                     out.push(rel.to_path_buf());
                 }
             }
         }
         out.sort();
-        out
+        Ok(out)
     }
 }
 
@@ -1374,7 +1545,7 @@ mod tree {
 mod freebsd {
     use std::ffi::OsStr;
 
-    use super::*;
+    use super::{CraftApp, Path, PathBuf, Paths, pkexec, process, run_as_root, tree};
 
     /// Copies the release's tree into `/usr/local` (asking for permission through polkit), or
     /// into `~/.local` when polkit isn't installed. Returns the binary, every file installed,
@@ -1388,10 +1559,10 @@ mod freebsd {
 
     fn install_from(app: &CraftApp, file: &Path, staging: &Path) -> Result<(PathBuf, Vec<PathBuf>, bool), String> {
         let tree = tree::unpack(app, file, staging)?;
-        let rel = tree::files(&tree);
+        let rel = tree::files(&tree)?;
         let mut source = tree.into_os_string();
         source.push("/.");
-        if which("pkexec").is_some() {
+        if pkexec().is_some() {
             let prefix = PathBuf::from("/usr/local");
             run_as_root(&[OsStr::new("/bin/cp"), OsStr::new("-R"), &source, prefix.as_os_str()])?;
             return Ok((prefix.join("bin").join(app.id), rel.iter().map(|r| prefix.join(r)).collect(), true));
@@ -1427,12 +1598,39 @@ mod freebsd {
         if files.is_empty() {
             return Err("the launcher has no record of these files".into());
         }
+        let prefix = if needs_root { PathBuf::from("/usr/local") } else { dirs::home_dir().ok_or("no home folder")?.join(".local") };
+        let mut safe_files = Vec::new();
+        for f in files {
+            // Refuse paths that climb or escape install prefix (CWE-59).
+            if !f.starts_with(&prefix) || f.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+                return Err(format!("refusing to remove file outside install prefix: {}", f.display()));
+            }
+            let mut has_symlink_ancestor = false;
+            if let Ok(rel) = f.strip_prefix(&prefix) {
+                let mut check = prefix.clone();
+                for part in rel.components() {
+                    if let Ok(meta) = std::fs::symlink_metadata(&check)
+                        && meta.file_type().is_symlink()
+                    {
+                        has_symlink_ancestor = true;
+                        break;
+                    }
+                    check.push(part);
+                }
+            }
+            if !has_symlink_ancestor {
+                safe_files.push(f);
+            }
+        }
+        if safe_files.is_empty() {
+            return Ok(());
+        }
         if needs_root {
             let mut args: Vec<&OsStr> = vec![OsStr::new("/bin/rm"), OsStr::new("-f"), OsStr::new("--")];
-            args.extend(files.iter().map(|f| f.as_os_str()));
+            args.extend(safe_files.iter().map(|f| f.as_os_str()));
             return run_as_root(&args);
         }
-        for f in files {
+        for f in safe_files {
             let _ = std::fs::remove_file(f);
         }
         Ok(())
@@ -1445,8 +1643,16 @@ mod freebsd {
 fn msi_command(program: &Path, msi: &Path) -> Result<std::process::Command, String> {
     let msi = msi_path(msi)?;
     let mut command = process::command(program);
-    command.arg("/i").arg(msi).args(["/passive", "/norestart"]);
+    // A verbose log beside the package: Windows Installer's own errors (1603 above all) say
+    // nothing without it.
+    command.arg("/i").arg(&msi).args(["/passive", "/norestart", "/l*v"]).arg(msi_log(&msi));
     Ok(command)
+}
+
+/// Where `msi_command` asks Windows Installer to write its log.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn msi_log(msi: &Path) -> PathBuf {
+    msi.with_extension("log")
 }
 
 /// Windows Installer's storage APIs can fail on paths through junctions or symlinks (#338).
@@ -1465,7 +1671,10 @@ pub(crate) fn msi_path(msi: &Path) -> Result<PathBuf, String> {
 pub mod windows {
     use artcraft_launcher_core::protocol::CANCELLED;
 
-    use super::*;
+    use super::{
+        CraftApp, INSTALLER, JobPhase, Path, PathBuf, Paths, Record, Stop, cancelled, find_binary, msi_command, msi_folder_argument, msi_log,
+        process, single_top_folder, swap_into_place, turn,
+    };
 
     fn msiexec() -> PathBuf {
         std::env::var_os("SystemRoot").map_or_else(|| PathBuf::from(r"C:\Windows"), PathBuf::from).join(r"System32\msiexec.exe")
@@ -1491,8 +1700,18 @@ pub mod windows {
                 command.raw_arg(msi_folder_argument(dir)?);
             }
             let status = command.status().map_err(|e| format!("couldn't start the Windows Installer ({e})"))?;
-            explain(status.code())
+            explain(status.code()).map_err(|e| match status.code() {
+                Some(1602) | None => e,
+                _ => format!("{e}. Its log is at {}", msi_log(msi).display()),
+            })
         })
+    }
+
+    /// Runs the launcher's own new MSI for a self-update, with the same progress window and no
+    /// restart as [`run_msi`], and waits for it.
+    pub fn reinstall(msi: &Path) -> Result<(), String> {
+        let status = msi_command(&msiexec(), msi)?.status().map_err(|e| format!("couldn't start the Windows Installer ({e})"))?;
+        explain(status.code())
     }
 
     /// Runs `work` once no other Windows Installer job of ours is running (a second one would
@@ -1653,7 +1872,9 @@ mod tests {
                 std::ffi::OsStr::new("/i"),
                 file.canonicalize().unwrap().as_os_str(),
                 std::ffi::OsStr::new("/passive"),
-                std::ffi::OsStr::new("/norestart")
+                std::ffi::OsStr::new("/norestart"),
+                std::ffi::OsStr::new("/l*v"),
+                file.canonicalize().unwrap().with_extension("log").as_os_str()
             ]
         );
     }
@@ -2029,7 +2250,7 @@ mod tests {
         );
         for file in [tree_style, flat_style] {
             let root = tree::unpack(app, &file, &dir.path().join("staging")).unwrap();
-            let files = tree::files(&root);
+            let files = tree::files(&root).unwrap();
             assert!(files.contains(&PathBuf::from("bin/wordcraft")), "{files:?}");
             assert!(files.contains(&PathBuf::from("share/applications/ai.storyteller.wordcraft.desktop")), "{files:?}");
             assert!(!files.iter().any(|f| f.ends_with("README.md")), "{files:?}");
@@ -2037,6 +2258,47 @@ mod tests {
         let bad = dir.path().join("bad.tar.gz");
         tarball(&bad, &["x/README.md"]);
         assert!(tree::unpack(app, &bad, &dir.path().join("staging")).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn tree_files_does_not_traverse_directory_symlinks() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("root");
+        let external = dir.path().join("external");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&external).unwrap();
+        std::fs::write(root.join("regular.txt"), b"hi").unwrap();
+        std::fs::write(external.join("secret.txt"), b"secret").unwrap();
+        std::os::unix::fs::symlink(&external, root.join("link_to_external")).unwrap();
+
+        let list = tree::files(&root).unwrap();
+        assert_eq!(list, vec![PathBuf::from("link_to_external"), PathBuf::from("regular.txt")]);
+    }
+
+    #[cfg(target_os = "freebsd")]
+    #[test]
+    fn remove_files_refuses_escaping_paths() {
+        assert!(freebsd::remove_files(&[PathBuf::from("/etc/shadow")], false).is_err());
+        if let Some(home) = dirs::home_dir() {
+            let prefix = home.join(".local");
+            assert!(freebsd::remove_files(&[prefix.join("../escaped")], false).is_err());
+        }
+    }
+
+    #[test]
+    fn single_top_folder_rejects_symlink() {
+        let dir = tempfile::tempdir().unwrap();
+        let real_dir = dir.path().join("real");
+        std::fs::create_dir_all(&real_dir).unwrap();
+        let staging = dir.path().join("staging");
+        std::fs::create_dir_all(&staging).unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&real_dir, staging.join("symlink_dir")).unwrap();
+            let res = single_top_folder(&staging).unwrap();
+            assert_eq!(res, staging, "a directory symlink must not be chosen as top folder");
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -2078,6 +2340,56 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
+    fn a_tarball_binary_that_is_a_symlink_out_of_the_tree_is_refused() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+        let app = CraftApp::by_id("wordcraft").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::under(dir.path());
+
+        // A working install the rejected update must leave untouched.
+        let good = dir.path().join("wordcraft-0.3.0-linux-x86_64.tar.gz");
+        tarball(&good, &["wordcraft-0.3.0-linux-x86_64/bin/wordcraft"]);
+        let bin = linux::install_tree(app, &good, &paths).unwrap();
+        assert_eq!(std::fs::read_to_string(&bin).unwrap(), "hi");
+
+        // A file outside the install tree that the archive tries to chmod through a symlink.
+        let outside = dir.path().join("victim");
+        std::fs::write(&outside, b"secret").unwrap();
+        std::fs::set_permissions(&outside, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+        // A tarball whose bin/wordcraft is a symlink to that external file.
+        let file = dir.path().join("evil.tar.gz");
+        let f = std::fs::File::create(&file).unwrap();
+        let mut b = tar::Builder::new(flate2::write::GzEncoder::new(f, flate2::Compression::fast()));
+        let mut link = tar::Header::new_gnu();
+        link.set_entry_type(tar::EntryType::Symlink);
+        link.set_size(0);
+        link.set_mode(0o777);
+        link.set_cksum();
+        b.append_link(&mut link, "wordcraft-0.3.0-linux-x86_64/bin/wordcraft", &outside).unwrap();
+        // A second real file so the top folder is detected.
+        let mut reg = tar::Header::new_gnu();
+        reg.set_size(2);
+        reg.set_mode(0o644);
+        reg.set_cksum();
+        b.append_data(&mut reg, "wordcraft-0.3.0-linux-x86_64/share/applications/ai.storyteller.wordcraft.desktop", &b"hi"[..]).unwrap();
+        b.into_inner().unwrap().finish().unwrap();
+        drop(std::io::stdout().flush());
+
+        let result = linux::install_tree(app, &file, &paths);
+        assert!(result.is_err(), "a symlink binary must be rejected: {result:?}");
+        assert!(result.unwrap_err().contains("symlink"));
+        // The external file keeps its original mode: the chmod never reached it.
+        let mode = std::fs::metadata(&outside).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "the external file's permissions must be untouched");
+        // The rejected update left the previously installed, working binary fully intact.
+        assert!(bin.is_file(), "the rejected update must not remove the working binary");
+        assert_eq!(std::fs::read_to_string(&bin).unwrap(), "hi");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
     fn an_app_sees_its_own_home_and_the_xdg_folders_inside_it() {
         let home = PathBuf::from("/data/apps/photocraft/home");
         let env = home_env(&home);
@@ -2088,6 +2400,35 @@ mod tests {
         for wanted in ["XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"] {
             assert!(env.iter().any(|(name, _)| *name == wanted), "{wanted} isn't set");
         }
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[test]
+    fn root_commands_run_programs_by_absolute_path_from_the_given_dirs() {
+        use std::ffi::OsStr;
+        let root = tempfile::tempdir().unwrap();
+        let (usr_bin, sbin) = (root.path().join("usr/bin"), root.path().join("sbin"));
+        std::fs::create_dir_all(&usr_bin).unwrap();
+        std::fs::create_dir_all(&sbin).unwrap();
+        std::fs::write(usr_bin.join("rpm"), b"").unwrap();
+        std::fs::write(sbin.join("rpm"), b"").unwrap();
+        std::fs::write(sbin.join("zypper"), b"").unwrap();
+        let dirs = [&usr_bin, &sbin];
+        let run = |args: &[&str]| {
+            let args: Vec<&OsStr> = args.iter().map(OsStr::new).collect();
+            with_absolute_program(&dirs, &args).map(|a| a.into_iter().map(PathBuf::from).collect::<Vec<_>>())
+        };
+
+        // The first directory that has the program wins, and the arguments follow unchanged.
+        assert_eq!(run(&["rpm", "-e", "wordcraft"]), Ok(vec![usr_bin.join("rpm"), "-e".into(), "wordcraft".into()]));
+        assert_eq!(run(&["zypper"]), Ok(vec![sbin.join("zypper")]));
+        // A program that isn't in those directories isn't looked for anywhere else.
+        assert_eq!(run(&["dnf", "remove"]), Err("dnf isn't installed".into()));
+        // An absolute path is kept; a relative path with folders in it is refused.
+        assert_eq!(run(&["/bin/cp", "-R"]), Ok(vec!["/bin/cp".into(), "-R".into()]));
+        assert!(run(&["../usr/bin/rpm"]).is_err());
+        assert!(run(&["bin/rpm"]).is_err());
+        assert!(run(&[]).is_err());
     }
 
     #[cfg(target_os = "linux")]
@@ -2359,6 +2700,53 @@ mod tests {
         assert!(result.unwrap_err().contains("installed version 0.5.0 is newer"));
     }
 
+    #[test]
+    fn install_rejects_an_artifact_whose_version_is_not_the_advertised_one() {
+        // The release advertises 99.0.0, but the selected artifact is an older official build
+        // (filename and URL tag say 0.4.0). The guard must refuse before any download.
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::under(dir.path());
+        let http = Http::new().unwrap();
+        let phase = &mut |_| ();
+        let locations = InstallLocations::default();
+        let app = CraftApp::by_id("photocraft").unwrap();
+        let release = Release { version: version::parse("99.0.0"), tag: "v99.0.0".into(), ..Release::default() };
+        let asset = Asset {
+            name: "photocraft-0.4.0-linux-x86_64.AppImage".into(),
+            url: "https://github.com/storytold/photocraft/releases/download/v0.4.0/photocraft-0.4.0-linux-x86_64.AppImage".into(),
+            ..Asset::default()
+        };
+        let stop = Stop::default();
+        let mut job = Job { http: &http, paths: &paths, stop: &stop, phase, install_locations: &locations, replace: false };
+        let result = install_at(app, &release, &asset, PackageKind::AppImage, None, None, &mut job, None);
+        assert!(result.is_err(), "mismatched artifact version must be rejected");
+        assert!(result.unwrap_err().contains("does not match the advertised version"));
+
+        // A matching artifact passes the guard (it fails later for unrelated reasons, not the bind).
+        let good = Asset {
+            name: "photocraft-99.0.0-linux-x86_64.AppImage".into(),
+            url: "https://github.com/storytold/photocraft/releases/download/v99.0.0/photocraft-99.0.0-linux-x86_64.AppImage".into(),
+            ..Asset::default()
+        };
+        assert!(bind_artifact_version(app, &release, &good).is_ok());
+
+        // URL filename mismatch is rejected (CWE-494).
+        let bad_url_name = Asset {
+            name: "photocraft-99.0.0-linux-x86_64.AppImage".into(),
+            url: "https://github.com/storytold/photocraft/releases/download/v99.0.0/other.AppImage".into(),
+            ..Asset::default()
+        };
+        assert!(bind_artifact_version(app, &release, &bad_url_name).is_err());
+
+        // URL tag mismatch is rejected.
+        let bad_tag = Asset {
+            name: "photocraft-99.0.0-linux-x86_64.AppImage".into(),
+            url: "https://github.com/storytold/photocraft/releases/download/unparsed_tag/photocraft-99.0.0-linux-x86_64.AppImage".into(),
+            ..Asset::default()
+        };
+        assert!(bind_artifact_version(app, &release, &bad_tag).is_err());
+    }
+
     #[cfg(target_os = "linux")]
     #[test]
     fn package_kinds_order_matches_launcher_format() {
@@ -2434,21 +2822,33 @@ mod tests {
             app
         }
 
-        /// A release-style disk image holding a `PhotoCraft.app` that reports `version`.
+        /// A release-style disk image holding a `PhotoCraft.app` that reports `version`. The
+        /// disk-image helper turns requests away while it is busy (`attach` retries for the same
+        /// reason), so `hdiutil create` is tried a few times, and what it said is kept for the
+        /// failure message.
         fn dmg(dir: &Path, version: &str) -> PathBuf {
             let src = dir.join(format!("src-{version}"));
             bundle(&src, version);
             let dmg = dir.join(format!("photocraft-{version}-macos-universal.dmg"));
             let _one_at_a_time = super::macos::DISK_IMAGES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            let ok = std::process::Command::new("hdiutil")
-                .args(["create", "-quiet", "-format", "UDZO", "-volname", "PhotoCraft", "-srcfolder"])
-                .arg(&src)
-                .arg(&dmg)
-                .status()
-                .unwrap()
-                .success();
-            assert!(ok, "hdiutil create failed");
-            dmg
+            let mut said = String::new();
+            for attempt in 0..5u64 {
+                if attempt > 0 {
+                    std::thread::sleep(std::time::Duration::from_millis(400 * attempt));
+                    let _ = std::fs::remove_file(&dmg);
+                }
+                let output = std::process::Command::new("hdiutil")
+                    .args(["create", "-quiet", "-format", "UDZO", "-volname", "PhotoCraft", "-srcfolder"])
+                    .arg(&src)
+                    .arg(&dmg)
+                    .output()
+                    .unwrap();
+                if output.status.success() {
+                    return dmg;
+                }
+                said = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            }
+            panic!("hdiutil create failed after 5 tries: {said}");
         }
 
         #[test]
