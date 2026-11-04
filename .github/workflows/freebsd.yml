@@ -4,12 +4,10 @@
 # fail a release. Nothing is uploaded and no secrets are used.
 name: FreeBSD
 
-# The VM build is slow, so it runs nightly on main and on pushes to `release`, not on every push
-# or dependency change: a drifted dependency still shows up within a day, and always before a
-# release ships. PRs that change the FreeBSD packaging itself still run it.
+# The VM build is slow, so it runs on pushes to `release` and on PRs that change the FreeBSD
+# packaging, not on every push. The fork drops upstream's nightly cron: it tested a package that
+# this fork does not ship.
 on:
-  schedule:
-    - cron: "23 2 * * *"
   push:
     branches: [release]
   pull_request:
