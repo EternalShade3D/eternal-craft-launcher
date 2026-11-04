@@ -41,7 +41,21 @@ fn main() -> ExitCode {
     artcraft_launcher_ui_egui::i18n::detect_system_lang_in_background();
     // Detect Discord protocol handler in the background without blocking startup.
     artcraft_launcher_native::process::ensure_discord_detection_started();
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    // `std::env::args` panics on an argument that is not UTF-8, and the launcher is started with
+    // whatever the desktop hands it: a login entry, a file manager, a terminal in a Latin-1
+    // locale. It only ever looks for the two flags below, so an argument it cannot read is one it
+    // would have ignored anyway — and a start-up that dies with "internal error: panicked at
+    // library/std/src/env.rs" instead is the worst of both.
+    let args: Vec<String> = std::env::args_os()
+        .skip(1)
+        .filter_map(|a| match a.into_string() {
+            Ok(a) => Some(a),
+            Err(bad) => {
+                log::warn!("ignoring an argument that is not valid UTF-8: {}", bad.to_string_lossy());
+                None
+            }
+        })
+        .collect();
     if args.iter().any(|a| a == "--version" || a == "-V") {
         println!("artcraft-launcher {}", env!("CARGO_PKG_VERSION"));
         return ExitCode::SUCCESS;
